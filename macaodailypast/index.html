@@ -1,1 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>澳门日报日期访问工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(to right, #2c5282, #4a90e2);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .main-content {
+            padding: 30px;
+        }
+        
+        .input-section {
+            margin-bottom: 30px;
+        }
+        
+        .date-input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        label {
+            font-weight: 600;
+            color: #2c5282;
+            font-size: 1.1rem;
+        }
+        
+        input[type="date"] {
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+        }
+        
+        input[type="date"]:focus {
+            border-color: #4a90e2;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        button {
+            padding: 15px 30px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        button:hover {
+            background-color: #2c5282;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(44, 82, 130, 0.3);
+        }
+        
+        #today-btn {
+            background-color: #38a169;
+        }
+        
+        #today-btn:hover {
+            background-color: #2d7a52;
+        }
+        
+        #generate-btn {
+            background-color: #d69e2e;
+        }
+        
+        #generate-btn:hover {
+            background-color: #b7791f;
+        }
+        
+        .result-section {
+            background-color: #f7fafc;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 30px;
+            border-left: 5px solid #4a90e2;
+        }
+        
+        .result-section h3 {
+            color: #2c5282;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+        }
+        
+        #url-output {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            word-break: break-all;
+            margin-bottom: 20px;
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+        
+        #visit-btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            text-decoration: none;
+            padding: 15px;
+            background-color: #2c5282;
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+        }
+        
+        #visit-btn:hover {
+            background-color: #1a365d;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(26, 54, 93, 0.3);
+        }
+        
+        .instructions {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f0f9ff;
+            border-radius: 10px;
+            border-left: 5px solid #d69e2e;
+        }
+        
+        .instructions h3 {
+            color: #d69e2e;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+        }
+        
+        .instructions p {
+            margin-bottom: 10px;
+        }
+        
+        .instructions ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        .example {
+            font-family: monospace;
+            background-color: #edf2f7;
+            padding: 8px 12px;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            color: #718096;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                border-radius: 10px;
+            }
+            
+            header {
+                padding: 20px 15px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            button {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>澳门日报过时日期访问工具</h1>
+            <p class="subtitle">输入日期，自动生成对应日期的澳门日报网页</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="input-section">
+                <div class="date-input-container">
+                    <div class="input-group">
+                        <label for="date-input">选择日期：</label>
+                        <input type="date" id="date-input" value="2026-01-07">
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button id="today-btn">设为今日</button>
+                    <button id="generate-btn">生成链接</button>
+                </div>
+            </div>
+            
+            <div class="result-section">
+                <h3>生成的澳门日报链接：</h3>
+                <div id="url-output">https://www.macaodaily.com/html/2026-01/07/node_2.htm</div>
+                <a id="visit-btn" href="https://www.macaodaily.com/html/2026-01/07/node_2.htm" target="_blank">访问该日期页面</a>
+            </div>
+            
+            <div class="instructions">
+                <h3>使用说明：</h3>
+                <p>1. 在上方选择日期（默认显示示例日期 2026-01-07）</p>
+                <p>2. 点击"生成链接"按钮，下方将显示对应日期的澳门日报链接</p>
+                <p>3. 点击"访问该日期页面"按钮，将在新标签页中打开澳门日报对应日期的页面</p>
+                <p>4. 点击"设为今日"按钮可快速选择今天日期</p>
+                
+                <p><strong>URL格式说明：</strong></p>
+                <ul>
+                    <li>澳门日报URL格式为：<span class="example">https://www.macaodaily.com/html/YYYY-MM/DD/node_2.htm</span></li>
+                    <li>其中YYYY为4位年份，MM为2位月份，DD为2位日期</li>
+                    <li>例如：2026年1月7日对应 <span class="example">https://www.macaodaily.com/html/2026-01/07/node_2.htm</span></li>
+                </ul>
+            </div>
+        </div>
+        
+        <footer>
+            <p>本工具仅用于根据日期生成澳门日报对应页面链接，所有内容版权归澳门日报所有</p>
+            <p></p>
+        </footer>
+    </div>
 
+    <script>
+        // 获取DOM元素
+        const dateInput = document.getElementById('date-input');
+        const urlOutput = document.getElementById('url-output');
+        const visitBtn = document.getElementById('visit-btn');
+        const todayBtn = document.getElementById('today-btn');
+        const generateBtn = document.getElementById('generate-btn');
+        
+        // 初始示例日期
+        const exampleDate = new Date('2026-01-07');
+        
+        // 格式化日期为YYYY-MM-DD格式
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // 从日期生成URL
+        function generateURL(dateString) {
+            const date = new Date(dateString);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            
+            return `https://www.macaodaily.com/html/${year}-${month}/${day}/node_2.htm`;
+        }
+        
+        // 更新URL显示和按钮链接
+        function updateURL() {
+            const selectedDate = dateInput.value;
+            const url = generateURL(selectedDate);
+            
+            urlOutput.textContent = url;
+            visitBtn.href = url;
+        }
+        
+        // 设置为今天日期
+        function setTodayDate() {
+            const today = new Date();
+            dateInput.value = formatDate(today);
+            updateURL();
+        }
+        
+        // 页面加载时初始化
+        function init() {
+            // 设置初始日期为示例日期
+            dateInput.value = formatDate(exampleDate);
+            
+            // 绑定事件
+            generateBtn.addEventListener('click', updateURL);
+            todayBtn.addEventListener('click', setTodayDate);
+            dateInput.addEventListener('change', updateURL);
+            
+            // 初始生成URL
+            updateURL();
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

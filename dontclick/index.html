@@ -1,1 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>千万别点 · 神秘按钮</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none; /* 避免拖动/选中文字，保持按钮整洁 */
+        }
 
+        body {
+            min-height: 100vh;
+            background: linear-gradient(145deg, #1a1e2c 0%, #2d2f3f 100%);
+            font-family: system-ui, 'Segoe UI', 'Poppins', 'Roboto', 'Helvetica Neue', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            margin: 0;
+            /* 优雅背景纹理感 */
+            position: relative;
+        }
+
+        /* 动态微光背景 (增加神秘感但不影响功能) */
+        body::before {
+            content: "";
+            position: absolute;
+            width: 180%;
+            height: 180%;
+            top: -40%;
+            left: -40%;
+            background: radial-gradient(circle at 30% 20%, rgba(255, 100, 100, 0.08), transparent 70%);
+            animation: subtleShift 18s infinite alternate;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes subtleShift {
+            0% { transform: translate(0, 0) rotate(0deg); opacity: 0.4; }
+            100% { transform: translate(2%, 1%) rotate(2deg); opacity: 0.8; }
+        }
+
+        /* 主容器——只放按钮，极致聚焦 */
+        .button-container {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* 大按钮核心样式 */
+        .forbidden-btn {
+            background: linear-gradient(135deg, #ff2a2a 0%, #b91c1c 100%);
+            border: none;
+            cursor: pointer;
+            padding: 1.4rem 3.2rem;
+            font-size: clamp(2.2rem, 8vw, 4rem);
+            font-weight: 900;
+            font-family: inherit;
+            letter-spacing: 0.08em;
+            color: #fff9e8;
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+            border-radius: 100px;
+            box-shadow: 0 25px 35px -12px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.3), inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+            transition: all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            width: auto;
+            min-width: 280px;
+            text-align: center;
+            white-space: nowrap;
+            backdrop-filter: blur(2px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 增加按钮内发光悬停效果 */
+        .forbidden-btn::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.4s ease;
+            pointer-events: none;
+        }
+
+        .forbidden-btn:hover::before {
+            left: 100%;
+        }
+
+        /* 悬停时放大 + 更强烈的阴影 */
+        .forbidden-btn:hover {
+            transform: scale(1.05);
+            background: linear-gradient(135deg, #ff3e3e 0%, #cf1f1f 100%);
+            box-shadow: 0 30px 40px -12px black, inset 0 1px 3px rgba(255, 255, 255, 0.5);
+        }
+
+        /* 点击瞬间微缩动效，增加真实反馈 */
+        .forbidden-btn:active {
+            transform: scale(0.97);
+            transition: 0.05s linear;
+            box-shadow: 0 15px 25px -8px black;
+        }
+
+        /* 保证移动端触摸区域大且舒服 */
+        @media (max-width: 640px) {
+            .forbidden-btn {
+                min-width: 260px;
+                padding: 1rem 2rem;
+                white-space: normal;
+                word-break: keep-all;
+                line-height: 1.2;
+            }
+        }
+
+        /* 针对小屏避免文字折行不好看，依然保持大按钮感 */
+        @media (max-width: 480px) {
+            .forbidden-btn {
+                font-size: 2rem;
+                padding: 0.9rem 1.8rem;
+                min-width: 220px;
+                border-radius: 80px;
+            }
+        }
+
+        /* 可选: 添加一点 “警告徽记” 纯装饰，但不影响核心功能 */
+        .forbidden-btn:focus-visible {
+            outline: 3px solid #ffbb88;
+            outline-offset: 4px;
+        }
+
+        /* 完全符合大按钮 + 千万别点语义，没有任何干扰弹窗或额外文字 */
+    </style>
+</head>
+<body>
+<div class="button-container">
+    <button class="forbidden-btn" id="rickrollTrigger">⚠️ 千万别点 ⚠️</button>
+</div>
+
+<script>
+    (function() {
+        // 经典 Rick Roll 目的地 —— 永不过时的旋律 😈
+        const RICK_ROLL_URL = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+        
+        // 更可靠的备选：直接使用官方短链也一样安全
+        // 但保持主要链接为完整YouTube链接，确保100%跳转
+        
+        const bigButton = document.getElementById('rickrollTrigger');
+        
+        if (bigButton) {
+            // 点击事件 —— 自动跳转到Rick Roll (当前窗口，经典中招体验)
+            bigButton.addEventListener('click', function(event) {
+                // 阻止任何可能的冒泡干扰（确保纯净）
+                event.preventDefault();
+                // 执行跳转，直接导航到YouTube经典视频
+                // 使用 window.location.href 实现当前页面跳转，更符合“自动跳转”意图
+                window.location.href = RICK_ROLL_URL;
+            });
+            
+            // 可选：增加触屏设备上的额外保障（部分老安卓需要）
+            bigButton.addEventListener('touchstart', function(e) {
+                // 仅仅为了确保触摸时不会产生奇怪的选择，但不干预跳转逻辑
+                // 不做额外prevent，保留click正常触发即可
+            }, { passive: false });
+        } else {
+            // 极端情况兜底：万一ID获取失败，通过选择器再次绑定
+            const fallbackBtn = document.querySelector('.forbidden-btn');
+            if (fallbackBtn) {
+                fallbackBtn.addEventListener('click', () => {
+                    window.location.href = RICK_ROLL_URL;
+                });
+            }
+        }
+    })();
+</script>
+</body>
+</html>

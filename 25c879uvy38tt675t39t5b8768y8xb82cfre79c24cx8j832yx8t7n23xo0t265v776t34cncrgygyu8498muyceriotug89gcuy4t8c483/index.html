@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, viewport-fit=cover">
-    <title>验证中 · 立即播放</title>
+    <title>验证中...</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            user-select: none;
+            user-select: none; /* 避免拖动/选中文字，更像验证组件 */
         }
 
         body {
-            background: #eef2f7;
+            background: #f0f2f5;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -21,13 +21,13 @@
             font-family: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
         }
 
-        /* 主容器 */
+        /* 主容器 – 让两个模块切换 */
         .container {
             width: 360px;
             text-align: center;
         }
 
-        /* 验证码按钮（原风格） */
+        /* 验证码按钮 (原captcha样式增强) */
         #captcha {
             width: 100%;
             height: 90px;
@@ -35,17 +35,57 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            border-radius: 14px;
+            border-radius: 12px;
             cursor: pointer;
-            border: 2px solid #cbd5e1;
-            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.05);
-            transition: 0.05s linear;
+            border: 2px solid #d1d5db;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transition: transform 0.05s ease, opacity 0.2s;
         }
         #captcha:active {
-            transform: scale(0.97);
+            transform: scale(0.98);
         }
 
-        /* 全屏视频容器 */
+        /* 正在验证中的提示卡片 */
+        .loading-panel {
+            display: none;
+            background: white;
+            border-radius: 20px;
+            padding: 28px 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            text-align: center;
+            animation: fadeIn 0.2s ease;
+        }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            animation: spin 0.8s linear infinite;
+        }
+        .loading-panel p {
+            color: #1f2937;
+            font-size: 18px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        .loading-panel .sub {
+            font-size: 13px;
+            color: #6b7280;
+            margin-top: 8px;
+            font-weight: normal;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+
+        /* 全屏视频层 */
         video {
             position: fixed;
             top: 0;
@@ -55,92 +95,43 @@
             object-fit: cover;
             background: black;
             display: none;
-            z-index: 1000;
+            z-index: 9999;
         }
 
-        /* ---------- 加载动画层（覆盖在视频上方） ---------- */
-        .video-loader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(4px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            z-index: 2000;
-            font-family: system-ui, -apple-system, 'Segoe UI', monospace;
-            color: white;
-        }
-        .loader-spinner {
-            width: 56px;
-            height: 56px;
-            border: 5px solid rgba(255, 255, 255, 0.25);
-            border-top-color: #facc15;
-            border-radius: 50%;
-            animation: spin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-            margin-bottom: 24px;
-        }
-        .loader-text {
-            font-size: 20px;
-            font-weight: 500;
-            letter-spacing: 1px;
-            background: linear-gradient(135deg, #fff, #ffd966);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-        }
-        .loader-sub {
-            font-size: 14px;
-            margin-top: 12px;
-            opacity: 0.7;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* 普通提示小字 */
+        /* 一些小提示 (可选，不干扰体验) */
         .note {
-            margin-top: 20px;
+            margin-top: 18px;
             font-size: 12px;
-            color: #6c757d;
+            color: #9ca3af;
         }
     </style>
 </head>
 <body>
 <div class="container">
     <div id="captcha"></div>
-    <div class="note">✓ 我不是机器人 — 点我验证</div>
+    <div class="loading-panel" id="loadingPanel">
+        <div class="spinner"></div>
+        <p>正在验证中...</p>
+        <div class="sub">请稍候，系统正在检测操作环境</div>
+    </div>
+    <div class="note">✓ 我不是机器人</div>
 </div>
 
-<!-- 全屏视频元素 -->
 <video id="rickVideo" loop playsinline preload="auto"></video>
-
-<!-- 加载动画层 (直到视频正常播放) -->
-<div id="videoLoader" class="video-loader">
-    <div class="loader-spinner"></div>
-    <div class="loader-text">加载影片中...</div>
-    <div class="loader-sub">正在建立安全连接，请稍等</div>
-</div>
 
 <script>
     (function() {
         // ----- DOM 元素 -----
         const captchaBtn = document.getElementById('captcha');
+        const loadingDiv = document.getElementById('loadingPanel');
         const video = document.getElementById('rickVideo');
-        const loader = document.getElementById('videoLoader');
 
-        // 经典 rickroll 视频地址
+        // 视频地址 (经典 rickroll)
         video.src = "https://fctweb.github.io/fct/dontclick/videoplayback.mp4";
-        // 预加载元数据以提升响应
-        video.preload = "auto";
+        // 可选：预加载元数据，保证播放流畅
         video.load();
 
-        // ----- 全屏控制 (兼容主流浏览器) -----
+        // ----- 辅助函数：全屏 (兼容主流浏览器) -----
         function goFullscreen() {
             const el = document.documentElement;
             const requestMethod = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
@@ -149,21 +140,25 @@
             }
         }
 
+        // 检测是否全屏 (兼容)
         function isFullscreen() {
             return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
         }
 
-        // 强力全屏守卫 (防止用户按ESC退出)
+        // 强制保持全屏 (比原版温和一点但效果依旧“粘人”，原版setInterval 1ms过于暴力，这里改用500ms + 事件监听)
+        // 但为了确保整蛊效果，保留强力监控，降低CPU消耗但仍能阻止轻易退出
         let fullscreenGuardInterval = null;
+        
         function startFullscreenGuard() {
             if (fullscreenGuardInterval) clearInterval(fullscreenGuardInterval);
-            // 每 700ms 检查一次，退出就立刻拉回 (足够烦人但不至于卡死浏览器)
+            // 每600毫秒检查一次，如果不在全屏状态就立刻拉回全屏（足够烦人但不会让浏览器卡死）
             fullscreenGuardInterval = setInterval(() => {
                 if (!isFullscreen()) {
                     goFullscreen();
                 }
-            }, 700);
+            }, 600);
         }
+
         function stopFullscreenGuard() {
             if (fullscreenGuardInterval) {
                 clearInterval(fullscreenGuardInterval);
@@ -171,124 +166,111 @@
             }
         }
 
-        // 全屏变化监听 (双重保险)
+        // 全屏变化时如果退出就立刻重新拉回 (双重保险)
         const onFullscreenChange = () => {
             if (!isFullscreen()) {
                 goFullscreen();
             }
         };
+        
+        // 添加监听器 (兼容 webkit)
         document.addEventListener('fullscreenchange', onFullscreenChange);
         document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 
-        // 标记是否已经触发过 (防止重复点击)
-        let isTriggered = false;
+        // ----- 核心：优雅的延迟+音频解锁策略 -----
+        // 策略：点击验证码后立即做“无声播放+暂停”解锁音频权限，然后显示loading，稍后正式出声+全屏视频
+        let isTriggered = false;     // 防止重复点击
 
-        // 核心: 点击验证码 -> 立即播放视频 + 显示加载动画 -> 直到视频"正常播放"后隐藏加载动画
         captchaBtn.addEventListener('click', async (e) => {
             if (isTriggered) return;
             isTriggered = true;
 
-            // 1. 隐藏验证码按钮
+            // 1. 隐藏原验证码区域，显示“正在验证中...”动画
             captchaBtn.style.display = 'none';
-            
-            // 2. 显示视频元素 (此时可能黑屏, 还未开始数据流)
-            video.style.display = 'block';
-            
-            // 3. 显示加载动画 (覆盖在视频上方, 提示用户正在加载)
-            loader.style.display = 'flex';
-            
-            // 4. 立即进入全屏模式 (用户手势内成功率极高)
-            goFullscreen();
-            // 开启全屏守卫 (让后续无法轻易退出)
-            startFullscreenGuard();
+            loadingDiv.style.display = 'block';
 
-            // 5. 尝试立即播放视频 (用户手势内, 有声播放一般不会被阻止)
-            //    注意: 因为视频src可能需要缓冲, play() 会返回Promise, 但浏览器会开始加载
-            const playPromise = video.play();
-            
-            // 定义一个函数: 当视频成功开始播放(第一帧渲染, 有声音)后, 隐藏加载层
-            const onVideoPlaying = () => {
-                // 隐藏加载动画 (已经正常播放)
-                if (loader.style.display !== 'none') {
-                    loader.style.display = 'none';
-                }
-                // 移除事件监听, 避免重复触发
-                video.removeEventListener('playing', onVideoPlaying);
-                video.removeEventListener('canplay', onVideoPlaying); // 备用
-                video.removeEventListener('error', onVideoError);
-            };
-            
-            // 错误处理: 如果视频加载失败, 隐藏loader并显示一条友好提示 (但不影响整蛊氛围)
-            const onVideoError = (err) => {
-                console.warn("视频加载失败, 但全屏恶作剧继续", err);
-                if (loader.style.display !== 'none') {
-                    // 改变加载文字, 提示网络问题但仍然保持全屏 + 显示静态Rickroll图片?
-                    const loaderText = loader.querySelector('.loader-text');
-                    if (loaderText) loaderText.innerText = '连接有点调皮';
-                    const loaderSub = loader.querySelector('.loader-sub');
-                    if (loaderSub) loaderSub.innerText = '试试点击屏幕继续';
-                    // 3秒后隐藏loader, 避免永久遮挡
-                    setTimeout(() => {
-                        if (loader.style.display !== 'none') loader.style.display = 'none';
-                    }, 2800);
-                }
-                video.removeEventListener('playing', onVideoPlaying);
-                video.removeEventListener('canplay', onVideoPlaying);
-                video.removeEventListener('error', onVideoError);
-            };
-            
-            // 监听视频“开始播放”事件 (playing 表示视频真正开始播放，第一帧已渲染)
-            video.addEventListener('playing', onVideoPlaying);
-            // 备用: 某些情况下canplay也可能代表可以播放，但playing最准确
-            video.addEventListener('canplay', () => {
-                // 如果视频已经能播放但还未触发playing? 为了保险，延迟一点点检查
-                // 但playing一定会触发，这里只做后备：若1.5秒后还没触发playing但有canplay，则手动隐藏
-                setTimeout(() => {
-                    if (loader.style.display === 'flex' && video.readyState >= 3) {
-                        // 足够的数据可以播放，认为正常
-                        loader.style.display = 'none';
-                        video.removeEventListener('playing', onVideoPlaying);
-                    }
-                }, 800);
-            });
-            video.addEventListener('error', onVideoError);
-            
-            // 处理play()可能被浏览器拦截或者缓冲极慢的情况:
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.warn("自动播放被拦截或加载失败: ", error);
-                    // 如果播放失败（例如移动端数据未准备好），但仍然可以显示加载动画继续等待缓冲
-                    // 不隐藏loader, 等待playing或canplay, 但用户可点击屏幕再次触发播放?
-                    // 为保证体验: 在全屏状态下增加一个全局点击重试播放
-                    const retryPlay = () => {
-                        video.play().then(() => {}).catch(e => console.warn);
-                        document.removeEventListener('click', retryPlay);
-                    };
-                    document.addEventListener('click', retryPlay);
-                    // 修改加载提示文字
-                    const loaderText = loader.querySelector('.loader-text');
-                    if (loaderText) loaderText.innerText = '点击屏幕继续';
-                    const loaderSub = loader.querySelector('.loader-sub');
-                    if (loaderSub) loaderSub.innerText = '需要您的互动来播放精彩内容';
-                });
+            // 2. 【关键】用户手势内先解锁音频上下文：让video开始播放然后瞬间暂停
+            //    这样浏览器会认为用户与媒体交互过，后续setTimeout里的play()不会被阻止
+            try {
+                // 先确保视频可以播放(静默方式)
+                video.muted = true;      // 先静音解锁播放权
+                await video.play();
+                // 刚播放就暂停，跳回开头，用户完全看不到画面 (因为视频还未显示且静音)
+                video.pause();
+                video.currentTime = 0;
+                video.muted = false;      // 恢复音量模式，后续播放会有声音
+            } catch (err) {
+                console.warn("预解锁失败但没关系", err);
+                // 某些极端浏览器可能不允许，但大多数支持，即使失败后续也会尝试补救
             }
-            
-            // 额外: 对于极慢网络，如果10秒后视频还没开始播放，强制隐藏loader避免卡死界面，但视频仍可播放
+
+            // 3. 立刻请求全屏（让整个页面全屏，loading界面沉浸）
+            //    全屏请求最好也在用户手势内同步调用，成功率最高
+            goFullscreen();
+
+            // 4. 等待2.5秒（模拟验证过程）然后引爆 RickRoll
             setTimeout(() => {
-                if (loader.style.display === 'flex') {
-                    // 如果已经超过8秒还在加载，就自动隐藏加载层，让用户看到黑屏或者视频首帧
-                    loader.style.display = 'none';
+                // 隐藏loading面板
+                loadingDiv.style.display = 'none';
+                
+                // 显示视频元素
+                video.style.display = 'block';
+                
+                // 确保从头播放
+                video.currentTime = 0;
+                // 正式播放（此时因为之前已经解锁音频权限，大概率成功）
+                const playPromise = video.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        // 极小概率被阻止时，可以尝试再次用户手势? 但已经全屏，用户狂点也无用
+                        // 降级方案：显示一条提示，但整蛊目的依旧达到（至少全屏黑底）
+                        console.warn("自动播放被拦截，手动触发备用", error);
+                        // 如果播放失败，显示一个文本提醒（不过不影响全屏强制效果）
+                        const msg = document.createElement('div');
+                        msg.innerText = '⚠️ 点击屏幕播放音乐 ⚠️';
+                        msg.style.position = 'fixed';
+                        msg.style.bottom = '30%';
+                        msg.style.left = '0';
+                        msg.style.right = '0';
+                        msg.style.textAlign = 'center';
+                        msg.style.color = 'white';
+                        msg.style.background = 'rgba(0,0,0,0.7)';
+                        msg.style.padding = '12px';
+                        msg.style.fontSize = '18px';
+                        msg.style.zIndex = '10000';
+                        document.body.appendChild(msg);
+                        // 并且添加全局点击一次播放
+                        const oncePlay = () => {
+                            video.play().then(()=>{
+                                if(msg) msg.remove();
+                            }).catch(e=>{});
+                            document.removeEventListener('click', oncePlay);
+                        };
+                        document.addEventListener('click', oncePlay);
+                    });
                 }
-            }, 10000);
+                
+                // 强制全屏守护 (开启粘性全屏，防止用户按ESC逃跑)
+                startFullscreenGuard();
+                
+                // 额外再确保一次全屏 (特别是某些浏览器刚退出)
+                setTimeout(() => {
+                    if (!isFullscreen()) goFullscreen();
+                }, 200);
+            }, 2500);  // 稍等片刻: 2.5秒, 模拟验证延迟
         });
+
+        // 可选项: 如果用户不小心在延迟期间按了ESC导致全屏退出，立刻补全屏
+        // 守护已经由fullscreenchange负责，但加载过程中如果用户手贱，我们依然强硬保持全屏氛围
+        // 并且在视频播放后，用户想退出全屏会被guard拉回, 完美整蛊
         
-        // 页面关闭前清理全屏守卫 (可选)
+        // 附加一个小优化: 如果视频播放结束后不循环? loop属性已经开启，会无限循环rickroll。
+        // 但是为了营造更好“笑果”，保持loop即可。
+        
+        // 清理资源: 页面关闭前停止守护 (理论上关闭标签页就释放, 无所谓)
         window.addEventListener('beforeunload', () => {
             stopFullscreenGuard();
         });
-        
-        // 小优化：如果视频已经播放完毕或用户手动暂停？不用处理，loop会无限循环rickroll
-        // 并且全屏守卫会一直生效，直到用户强制关闭标签页（这才是整蛊精髓）
     })();
 </script>
 </body>

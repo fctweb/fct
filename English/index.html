@@ -1,1 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grammar Revision · 满分彩花 · 实时检测</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+      background: #0b1120;
+      color: #e2e8f0;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 16px;
+    }
 
+    /* 全屏彩花画布 */
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+      display: none;
+    }
+
+    .dark-title {
+      background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+      color: #fbbf24;
+      padding: 20px 24px;
+      border-radius: 60px 60px 30px 30px;
+      margin-bottom: 16px;
+      text-align: center;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,215,0,0.3);
+      border: 1px solid #fbbf24;
+      border-top: 3px solid #fbbf24;
+    }
+    .dark-title h1 {
+      margin: 0;
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      text-shadow: 2px 2px 0 #0f172a, 4px 4px 0 rgba(251,191,36,0.2);
+    }
+    .dark-title p {
+      margin: 8px 0 0;
+      color: #94a3b8;
+      font-weight: 500;
+      font-size: 1rem;
+      letter-spacing: 2px;
+    }
+    .auto-switch-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      margin-bottom: 12px;
+      gap: 12px;
+    }
+    .auto-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      color: #cbd5e1;
+      user-select: none;
+    }
+    .auto-label input {
+      display: none;
+    }
+    .toggle-slider {
+      position: relative;
+      width: 52px;
+      height: 26px;
+      background: #334155;
+      border-radius: 30px;
+      transition: background 0.2s;
+      box-shadow: inset 0 1px 3px #00000080;
+      border: 1px solid #475569;
+    }
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: #f1f5f9;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 4px black;
+    }
+    .auto-label input:checked + .toggle-slider {
+      background: #fbbf24;
+      border-color: #f59e0b;
+    }
+    .auto-label input:checked + .toggle-slider::before {
+      transform: translateX(26px);
+      background: #0f172a;
+    }
+    .auto-hint {
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+    .card {
+      background: #1e293b;
+      border-radius: 16px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+      padding: 18px;
+      margin-bottom: 18px;
+      border: 1px solid #334155;
+    }
+    .part-title {
+      font-size: 1.25rem;
+      margin-bottom: 8px;
+      color: #f1f5f9;
+      border-left: 5px solid #fbbf24;
+      padding-left: 12px;
+    }
+    .instruction {
+      margin-bottom: 16px;
+      color: #94a3b8;
+    }
+    .question {
+      border: 2px solid #334155;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+      background: #0f172a;
+      transition: all 0.2s;
+    }
+    .question.error {
+      border: 3px solid #ef4444;
+      background: #2d1a1a;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+    }
+    .question-number {
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #60a5fa;
+    }
+    .question-text {
+      margin-bottom: 10px;
+      color: #e2e8f0;
+    }
+    input[type="text"], select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #475569;
+      border-radius: 10px;
+      font-size: 1rem;
+      background: #1e293b;
+      color: #f1f5f9;
+    }
+    input[type="text"]::placeholder {
+      color: #64748b;
+    }
+    .options {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .option-btn {
+      width: 100%;
+      border: 1px solid #475569;
+      background: #1e293b;
+      padding: 12px;
+      border-radius: 10px;
+      text-align: left;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.2s;
+      color: #e2e8f0;
+    }
+    .option-btn:hover {
+      background: #2d3b52;
+      border-color: #60a5fa;
+    }
+    .option-btn.selected {
+      background: #1e3a8a;
+      border-color: #3b82f6;
+      color: white;
+      font-weight: bold;
+    }
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    button.action-btn {
+      border: none;
+      border-radius: 30px;
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      letter-spacing: 0.3px;
+      border: 1px solid transparent;
+      color: white;
+    }
+    .check-btn {
+      background: linear-gradient(145deg, #2563eb, #1d4ed8);
+      border-color: #3b82f6;
+    }
+    .check-btn:hover {
+      background: linear-gradient(145deg, #3b82f6, #2563eb);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.5);
+      transform: translateY(-1px);
+    }
+    .show-btn {
+      background: linear-gradient(145deg, #b45309, #92400e);
+      border-color: #d97706;
+    }
+    .show-btn:hover {
+      background: linear-gradient(145deg, #d97706, #b45309);
+      box-shadow: 0 4px 12px rgba(217, 119, 6, 0.5);
+      transform: translateY(-1px);
+    }
+    .clear-btn {
+      background: linear-gradient(145deg, #475569, #334155);
+      border-color: #64748b;
+    }
+    .clear-btn:hover {
+      background: linear-gradient(145deg, #64748b, #475569);
+      box-shadow: 0 4px 12px rgba(100, 116, 139, 0.5);
+      transform: translateY(-1px);
+    }
+    .feedback {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-weight: bold;
+      display: none;
+    }
+    .feedback.correct {
+      display: block;
+      background: #14532d;
+      color: #dcfce7;
+      border: 1px solid #22c55e;
+    }
+    .feedback.wrong {
+      display: block;
+      background: #7f1d1d;
+      color: #fee2e2;
+      border: 1px solid #ef4444;
+    }
+    .feedback.show-answer {
+      display: block;
+      background: #3b2e1a;
+      color: #fde68a;
+      border: 1px solid #fbbf24;
+    }
+    .footer-box {
+      text-align: center;
+      font-weight: bold;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+    .score-section {
+      background: #0f172a;
+      color: white;
+      padding: 16px 20px;
+      border-radius: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      border: 1px solid #fbbf24;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    }
+    .score-btn {
+      background: #fbbf24;
+      border: none;
+      border-radius: 40px;
+      padding: 12px 24px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #0f172a;
+      cursor: pointer;
+      border: 1px solid #f59e0b;
+      transition: 0.2s;
+    }
+    .score-btn:hover {
+      background: #f59e0b;
+      transform: scale(1.02);
+    }
+    .score-display {
+      font-size: 1.8rem;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+    .perfect-score {
+      color: #fbbf24;
+      text-shadow: 0 0 15px #fbbf24, 0 0 30px #f59e0b;
+      animation: pulse-gold 1s infinite alternate;
+    }
+    @keyframes pulse-gold {
+      from { text-shadow: 0 0 8px #fbbf24, 0 0 16px #f59e0b; }
+      to { text-shadow: 0 0 18px #fde68a, 0 0 35px #fbbf24; }
+    }
+    .score-detail {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+    }
+    .celebration-banner {
+      background: linear-gradient(145deg, #fbbf24, #f59e0b);
+      color: #0f172a;
+      padding: 12px 20px;
+      border-radius: 50px;
+      font-weight: bold;
+      font-size: 1.2rem;
+      text-align: center;
+      margin-top: 16px;
+      box-shadow: 0 4px 15px #fbbf2480;
+      border: 1px solid #fde68a;
+    }
+
+    @media (max-width: 480px) {
+      .part-title { font-size: 1.1rem; }
+      button.action-btn { width: 100%; }
+      .score-section { flex-direction: column; text-align: center; }
+      .dark-title h1 { font-size: 1.8rem; }
+      .auto-switch-wrapper { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 全屏彩花画布 -->
+<canvas id="confetti-canvas"></canvas>
+
+<div class="container">
+  <div class="dark-title">
+    <h1>GRAMMAR REVISION</h1>
+    <p>Interactive Worksheet · 满分 110</p>
+  </div>
+
+  <!-- 实时检测模式开关 -->
+  <div class="auto-switch-wrapper">
+    <label class="auto-label">
+      <input type="checkbox" id="realtimeModeToggle" checked>
+      <span class="toggle-slider"></span>
+      <span>⚡ 实时检测 · 答对即跳</span>
+    </label>
+    <span class="auto-hint">输入正确自动下一题</span>
+  </div>
+
+  <div id="worksheet"></div>
+
+  <div class="card footer-box">~ The End ~</div>
+
+  <div class="score-section">
+    <div>
+      <div class="score-display" id="totalScoreDisplay">总分 0 / 110</div>
+      <div class="score-detail" id="detailScoreDisplay">Part A: 0/30 &nbsp; Part B: 0/30 &nbsp; Part C: 0/10 &nbsp; Part D: 0/40</div>
+    </div>
+    <button class="score-btn" id="calculateScoreBtn">📊 一键评分 · 错题狂飙红</button>
+  </div>
+  <div id="celebrationBanner" class="celebration-banner" style="display: none;">🎉🎉 完美！满分 110！ 太棒了！ 🎉🎉</div>
+</div>
+
+<script>
+  (function(){
+    // ----- 题目数据 (Part B 第8、10题答案已修正) -----
+    const worksheetData = [
+      {
+        title: "Part A. Fill in the blanks with: in, on, at.",
+        type: "text",
+        questions: [
+          { q: "The school will hold a music performance ____ Friday evening.", answer: "on" },
+          { q: "My cousin was born ____ 2012.", answer: "in" },
+          { q: "We usually have a class meeting ____ the morning.", answer: "in" },
+          { q: "The football match starts ____ 3:30 p.m.", answer: "at" },
+          { q: "Our family often travels abroad ____ December.", answer: "in" },
+          { q: "The art exhibition will open ____ Monday.", answer: "on" },
+          { q: "I prefer to do revision ____ night because it is quiet.", answer: "at" },
+          { q: "The students must hand in the project ____ noon.", answer: "at" },
+          { q: "My parents got married ____ June.", answer: "in" },
+          { q: "The new term began ____ 2 September.", answer: "on" }
+        ]
+      },
+      {
+        title: "Part B. Choose the correct wh-word: who, what, where, when, why, how.",
+        type: "text",
+        questions: [
+          { q: "____ is responsible for organising the class trip this year? / Ms. Anita is organising the class trip this year.", answer: "who" },
+          { q: "____ do you usually prepare for an important grammar paper? / I study my notes for an important grammar paper.", answer: "how" },
+          { q: "____ did the students gather after the school assembly? / The students gathered in the school hall.", answer: "where" },
+          { q: "____ are you interested in joining the school debate team? / I want to improve my speaking skills.", answer: "why" },
+          { q: "____ time does the science lesson begin on Fridays? / The science lesson begins at 9 o’clock.", answer: "what" },
+          { q: "____ is your opinion about wearing school uniforms? / I think school uniforms are good.", answer: "what" },
+          { q: "____ helped you complete the group project last week? / My classmates helped me complete the group project.", answer: "who" },
+          { q: "____ do you normally spend your weekends with your family? / I spend my weekends with my family every week.", answer: "when" },
+          { q: "____ did your classmates feel excited about the competition? / My classmates felt excited because they were ready.", answer: "why" },
+          { q: "____ is the student speaking to the principal? / The student is speaking to the principal for permission.", answer: "why" }
+        ]
+      },
+      {
+        title: "Part C. Choose A or B.",
+        type: "choice",
+        questions: [
+          { q: "The noticeboard is ____ the school office.", options: ["A. under", "B. next to"], answer: "B" },
+          { q: "The students left their bags ____ the benches outside the hall.", options: ["A. on", "B. in"], answer: "A" },
+          { q: "The lost property box is ____ the main entrance and the staircase.", options: ["A. behind", "B. between"], answer: "B" },
+          { q: "The cat was hiding ____ the table during the storm.", options: ["A. above", "B. under"], answer: "B" },
+          { q: "The principal’s car is parked ____ the school building.", options: ["A. in", "B. behind"], answer: "B" },
+          { q: "There is a flower garden ____ the library.", options: ["A. in front of", "B. behind"], answer: "A" },
+          { q: "The worksheets are ____ the teacher’s desk.", options: ["A. under", "B. on"], answer: "B" },
+          { q: "The basketball is ____ the chair.", options: ["A. under", "B. behind"], answer: "A" },
+          { q: "Several important documents are kept ____ the cabinet.", options: ["A. on", "B. in"], answer: "B" },
+          { q: "The teacher stood ____ the whiteboard while explaining the task.", options: ["A. behind", "B. in front of"], answer: "B" }
+        ]
+      },
+      {
+        title: "Part D. Dialogue-Based Reordering Questions",
+        type: "text",
+        instruction: "Type the correct reordered sentence.",
+        questions: [
+          { q: "Amy: grammar test / the / When / is ?", answer: "When is the grammar test?" },
+          { q: "Ben: on Friday / It / is .", answer: "It is on Friday." },
+          { q: "Amy: you / How / preparing / are / for / it ?", answer: "How are you preparing for it?" },
+          { q: "Ben: my notes / I / at night / am / reviewing .", answer: "I am reviewing my notes at night." },
+          { q: "Amy: usually / I / in the library / study .", answer: "I usually study in the library." },
+          { q: "Ben: grammar exercises / Why / are / doing / you / extra ?", answer: "Why are you doing extra grammar exercises?" },
+          { q: "Amy: understand / They / me / the rules / help / better / to .", answer: "They help me to understand the rules better." },
+          { q: "Ben: after school / Shall / we / together / revise ?", answer: "Shall we revise together after school?" },
+          { q: "Amy: That / sounds / like / a good idea .", answer: "That sounds like a good idea." },
+          { q: "Ben: classroom / meet / Let's / in the / after lunch .", answer: "Let's meet in the classroom after lunch." }
+        ]
+      }
+    ];
+
+    const PART_SCORES = [3, 3, 1, 4];
+    const TOTAL_FULL = 110;
+
+    function normalizeText(text) {
+      return text.trim().toLowerCase().replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/\s+/g, ' ');
+    }
+
+    const worksheetDiv = document.getElementById('worksheet');
+    const realtimeToggle = document.getElementById('realtimeModeToggle');
+
+    const questionWrappers = [];
+    let hasJumpedForCurrent = false;
+
+    // ---------- 彩花特效 ----------
+    const confettiCanvas = document.getElementById('confetti-canvas');
+    const ctx = confettiCanvas.getContext('2d');
+    let animationId = null;
+    let particles = [];
+
+    function resizeCanvas() {
+      confettiCanvas.width = window.innerWidth;
+      confettiCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function createParticles() {
+      const count = 150;
+      particles = [];
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * confettiCanvas.width,
+          y: Math.random() * -confettiCanvas.height,
+          size: Math.random() * 8 + 4,
+          speedY: Math.random() * 5 + 3,
+          speedX: Math.random() * 2 - 1,
+          color: `hsl(${Math.random() * 360}, 80%, 60%)`,
+          rotation: Math.random() * 360,
+          rotationSpeed: Math.random() * 4 - 2
+        });
+      }
+    }
+
+    function drawConfetti() {
+      ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+      let stillActive = false;
+      for (let p of particles) {
+        p.y += p.speedY;
+        p.x += p.speedX;
+        p.rotation += p.rotationSpeed;
+        if (p.y < confettiCanvas.height + 50) {
+          stillActive = true;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rotation * Math.PI / 180);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+          ctx.restore();
+        }
+      }
+      if (stillActive) {
+        animationId = requestAnimationFrame(drawConfetti);
+      } else {
+        confettiCanvas.style.display = 'none';
+        animationId = null;
+      }
+    }
+
+    function startConfetti() {
+      if (animationId) cancelAnimationFrame(animationId);
+      resizeCanvas();
+      createParticles();
+      confettiCanvas.style.display = 'block';
+      animationId = requestAnimationFrame(drawConfetti);
+      // 5秒后强制停止
+      setTimeout(() => {
+        if (animationId) {
+          cancelAnimationFrame(animationId);
+          confettiCanvas.style.display = 'none';
+          animationId = null;
+        }
+      }, 5000);
+    }
+
+    // ---------- 渲染题目 ----------
+    function renderWorksheet() {
+      worksheetData.forEach((part, partIndex) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const title = document.createElement('div');
+        title.className = 'part-title';
+        title.textContent = part.title;
+        card.appendChild(title);
+
+        if (part.instruction) {
+          const instruction = document.createElement('div');
+          instruction.className = 'instruction';
+          instruction.textContent = part.instruction;
+          card.appendChild(instruction);
+        }
+
+        const partWrappers = [];
+        part.questions.forEach((question, qIndex) => {
+          const wrapper = createQuestion(partIndex, qIndex, question, part.type);
+          card.appendChild(wrapper);
+          partWrappers.push(wrapper);
+        });
+
+        worksheetDiv.appendChild(card);
+        questionWrappers.push(partWrappers);
+      });
+
+      setTimeout(() => {
+        const firstInput = getInput(0, 0);
+        if (firstInput) {
+          if (firstInput.type === 'hidden') {
+            const firstOption = document.querySelector(`#part0-q0-options .option-btn`);
+            if (firstOption) firstOption.focus();
+          } else {
+            firstInput.focus();
+          }
+        }
+      }, 100);
+    }
+
+    function createQuestion(partIndex, questionIndex, question, type) {
+      const qId = `part${partIndex}-q${questionIndex}`;
+      const wrapper = document.createElement('div');
+      wrapper.className = 'question';
+      wrapper.dataset.part = partIndex;
+      wrapper.dataset.q = questionIndex;
+
+      let inputHtml = '';
+      if (type === 'text') {
+        inputHtml = `<input type="text" id="${qId}-input" placeholder="Type your answer here" autocomplete="off" />`;
+      } else if (type === 'choice') {
+        inputHtml = `
+          <div class="options" id="${qId}-options">
+            ${question.options.map((opt, idx) => `<button type="button" class="option-btn" data-value="${idx === 0 ? 'A' : 'B'}">${opt}</button>`).join('')}
+          </div>
+          <input type="hidden" id="${qId}-input" />
+        `;
+      }
+
+      wrapper.innerHTML = `
+        <div class="question-number">Question ${questionIndex + 1}</div>
+        <div class="question-text">${question.q}</div>
+        ${inputHtml}
+        <div class="btn-row">
+          <button class="action-btn check-btn" data-part="${partIndex}" data-q="${questionIndex}" data-type="${type}">✅ Check</button>
+          <button class="action-btn show-btn" data-part="${partIndex}" data-q="${questionIndex}">🔍 Show</button>
+          <button class="action-btn clear-btn" data-part="${partIndex}" data-q="${questionIndex}" data-type="${type}">🧹 Clear</button>
+        </div>
+        <div class="feedback" id="${qId}-feedback"></div>
+      `;
+
+      const checkBtn = wrapper.querySelector('.check-btn');
+      const showBtn = wrapper.querySelector('.show-btn');
+      const clearBtn = wrapper.querySelector('.clear-btn');
+      const input = type === 'text' ? wrapper.querySelector('input[type="text"]') : wrapper.querySelector('input[type="hidden"]');
+
+      checkBtn.addEventListener('click', () => checkAnswer(partIndex, questionIndex, type));
+      showBtn.addEventListener('click', () => showAnswer(partIndex, questionIndex));
+      clearBtn.addEventListener('click', () => clearAnswer(partIndex, questionIndex, type));
+
+      if (type === 'text') {
+        input.addEventListener('input', () => realtimeCheck(partIndex, questionIndex, type));
+      } else {
+        setTimeout(() => {
+          const optionButtons = wrapper.querySelectorAll('.option-btn');
+          const hiddenInput = document.getElementById(`${qId}-input`);
+          optionButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+              optionButtons.forEach(b => b.classList.remove('selected'));
+              btn.classList.add('selected');
+              hiddenInput.value = btn.dataset.value;
+              realtimeCheck(partIndex, questionIndex, type);
+            });
+          });
+        }, 0);
+      }
+
+      return wrapper;
+    }
+
+    function getInput(partIndex, questionIndex) {
+      return document.getElementById(`part${partIndex}-q${questionIndex}-input`);
+    }
+    function getFeedback(partIndex, questionIndex) {
+      return document.getElementById(`part${partIndex}-q${questionIndex}-feedback`);
+    }
+    function getQuestionWrapper(partIndex, questionIndex) {
+      return document.querySelector(`.question[data-part="${partIndex}"][data-q="${questionIndex}"]`);
+    }
+
+    function goToNextQuestion(currentPart, currentQ) {
+      let nextPart = currentPart;
+      let nextQ = currentQ + 1;
+      if (nextQ >= worksheetData[nextPart].questions.length) {
+        nextPart++;
+        nextQ = 0;
+      }
+      if (nextPart >= worksheetData.length) return false;
+
+      const nextWrapper = questionWrappers[nextPart]?.[nextQ];
+      if (!nextWrapper) return false;
+
+      const nextInput = getInput(nextPart, nextQ);
+      if (nextInput) {
+        if (nextInput.type === 'hidden') {
+          const firstOption = nextWrapper.querySelector('.option-btn');
+          if (firstOption) firstOption.focus();
+        } else {
+          nextInput.focus();
+        }
+      }
+      nextWrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return true;
+    }
+
+    function realtimeCheck(partIndex, questionIndex, type) {
+      if (!realtimeToggle.checked) return;
+      const question = worksheetData[partIndex].questions[questionIndex];
+      const input = getInput(partIndex, questionIndex);
+      const feedback = getFeedback(partIndex, questionIndex);
+      const wrapper = getQuestionWrapper(partIndex, questionIndex);
+      const userAnswer = normalizeText(input.value);
+      const correctAnswer = normalizeText(question.answer);
+
+      if (!userAnswer) {
+        wrapper.classList.remove('error');
+        feedback.className = 'feedback';
+        feedback.textContent = '';
+        return;
+      }
+
+      const isCorrect = (userAnswer === correctAnswer);
+      if (isCorrect) {
+        wrapper.classList.remove('error');
+        feedback.className = 'feedback correct';
+        feedback.textContent = '✅ Correct!';
+        if (!hasJumpedForCurrent) {
+          hasJumpedForCurrent = true;
+          setTimeout(() => {
+            goToNextQuestion(partIndex, questionIndex);
+            hasJumpedForCurrent = false;
+          }, 200);
+        }
+      } else {
+        wrapper.classList.add('error');
+        feedback.className = 'feedback wrong';
+        feedback.textContent = '❌ Incorrect';
+        hasJumpedForCurrent = false;
+      }
+    }
+
+    window.checkAnswer = function(partIndex, questionIndex, type) {
+      const question = worksheetData[partIndex].questions[questionIndex];
+      const input = getInput(partIndex, questionIndex);
+      const feedback = getFeedback(partIndex, questionIndex);
+      const wrapper = getQuestionWrapper(partIndex, questionIndex);
+      const userAnswer = normalizeText(input.value);
+      const correctAnswer = normalizeText(question.answer);
+
+      feedback.className = 'feedback';
+      if (!userAnswer) {
+        feedback.classList.add('wrong');
+        feedback.textContent = 'Please enter or choose an answer first.';
+        return;
+      }
+
+      const isCorrect = (userAnswer === correctAnswer);
+      if (isCorrect) {
+        feedback.classList.add('correct');
+        feedback.textContent = '✅ Correct! Well done.';
+        wrapper.classList.remove('error');
+      } else {
+        feedback.classList.add('wrong');
+        feedback.textContent = '❌ Not correct yet. Try again.';
+        wrapper.classList.add('error');
+      }
+    };
+
+    window.showAnswer = function(partIndex, questionIndex) {
+      const question = worksheetData[partIndex].questions[questionIndex];
+      const feedback = getFeedback(partIndex, questionIndex);
+      feedback.className = 'feedback show-answer';
+      feedback.textContent = `📘 Answer: ${question.answer}`;
+    };
+
+    window.clearAnswer = function(partIndex, questionIndex, type) {
+      const input = getInput(partIndex, questionIndex);
+      const feedback = getFeedback(partIndex, questionIndex);
+      const wrapper = getQuestionWrapper(partIndex, questionIndex);
+      input.value = '';
+      if (type === 'choice') {
+        const btns = document.querySelectorAll(`#part${partIndex}-q${questionIndex}-options .option-btn`);
+        btns.forEach(btn => btn.classList.remove('selected'));
+      }
+      feedback.className = 'feedback';
+      feedback.textContent = '';
+      wrapper.classList.remove('error');
+      hasJumpedForCurrent = false;
+    };
+
+    function calculateTotalScore() {
+      let partScores = [0, 0, 0, 0];
+      let total = 0;
+      document.querySelectorAll('.question').forEach(q => q.classList.remove('error'));
+
+      worksheetData.forEach((part, partIdx) => {
+        const perQuestionScore = PART_SCORES[partIdx];
+        part.questions.forEach((question, qIdx) => {
+          const input = getInput(partIdx, qIdx);
+          const feedback = getFeedback(partIdx, qIdx);
+          const wrapper = getQuestionWrapper(partIdx, qIdx);
+          if (!input || !feedback || !wrapper) return;
+
+          const userAnswer = normalizeText(input.value);
+          const correctAnswer = normalizeText(question.answer);
+          const isCorrect = (userAnswer === correctAnswer);
+
+          feedback.className = 'feedback show-answer';
+          feedback.textContent = `📘 Answer: ${question.answer}`;
+
+          if (isCorrect) {
+            partScores[partIdx] += perQuestionScore;
+            wrapper.classList.remove('error');
+          } else {
+            wrapper.classList.add('error');
+          }
+        });
+        total += partScores[partIdx];
+      });
+
+      const totalDisplay = document.getElementById('totalScoreDisplay');
+      totalDisplay.textContent = `总分 ${total} / 110`;
+
+      const banner = document.getElementById('celebrationBanner');
+      if (total === TOTAL_FULL) {
+        totalDisplay.classList.add('perfect-score');
+        banner.style.display = 'block';
+        startConfetti();   // 🎉 触发全屏彩花
+      } else {
+        totalDisplay.classList.remove('perfect-score');
+        banner.style.display = 'none';
+      }
+
+      document.getElementById('detailScoreDisplay').innerHTML = 
+        `Part A: ${partScores[0]}/30 &nbsp; Part B: ${partScores[1]}/30 &nbsp; Part C: ${partScores[2]}/10 &nbsp; Part D: ${partScores[3]}/40`;
+    }
+
+    document.getElementById('calculateScoreBtn').addEventListener('click', calculateTotalScore);
+
+    renderWorksheet();
+  })();
+</script>
+</body>
+</html>

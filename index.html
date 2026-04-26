@@ -143,7 +143,7 @@
     <div class="loading-en">Escola Fong Chong da Taipa</div>
     <div class="progress-box" id="pBox"><div class="bar" id="bar"></div></div>
     <button class="start-btn clickable" id="startBtn" onclick="enterSystem()">[ INITIALIZE SYSTEM ]</button>
-    <div class="calibration-hint">* 請將平板豎立正對自己，然後點擊按鈕進入</div>
+    <div class="calibration-hint">* 請將設備豎立正對自己，然後點擊按鈕進入</div>
   </div>
 
   <canvas id="bg-canvas"></canvas>
@@ -209,7 +209,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-    // --- 1. 系統加載與 Gyro 邏輯 ---
+    // --- 1. 系統加載與 Gyro 邏輯 (終極防抽風版) ---
     let progress = 0;
     const loadingInterval = setInterval(() => {
       progress += Math.random() * 15;
@@ -221,8 +221,7 @@
     }, 80);
 
     let isCalibrated = false;
-    let baseAlpha = 0, baseBeta = 0, baseGamma = 0;
-    let isBetaPitch = true;
+    let baseX = 0, baseY = 0;
     let targetMouseX = 0; let targetMouseY = 0; let mouseX = 0; let mouseY = 0;
 
     function enterSystem() {
@@ -238,26 +237,46 @@
 
     function handleGyro(e) {
       if (document.getElementById('sidePanel').classList.contains('open')) return;
+      
+      // 獲取當前設備方向 (0=直屏, 90或-90=橫屏)
+      let orientation = window.orientation || (screen.orientation && screen.orientation.angle) || 0;
+      
+      // 獲取原始姿態數據 (放棄 Alpha 羅盤，避免 Gimbal Lock 導致的暴衝)
+      let rawX = e.gamma || 0; // 物理左右傾斜
+      let rawY = e.beta || 0;  // 物理前後傾斜
+      
+      let x = 0, y = 0;
+      
+      // 根據橫直屏重新映射座標軸
+      if (Math.abs(orientation) === 90) {
+        let sign = orientation === 90 ? 1 : -1;
+        x = rawY * sign;
+        y = -rawX * sign;
+      } else {
+        x = rawX;
+        y = rawY;
+      }
+
+      // 第一次進入時設定基準點
       if (!isCalibrated) {
-        baseAlpha = e.alpha || 0; baseBeta = e.beta || 0; baseGamma = e.gamma || 0;
-        isBetaPitch = Math.abs(e.beta) > Math.abs(e.gamma);
+        baseX = x; baseY = y;
         isCalibrated = true; return;
       }
-      let deltaX = 0;
-      if (e.alpha !== null && e.alpha !== undefined) {
-        let deltaAlpha = e.alpha - baseAlpha;
-        if (deltaAlpha > 180) deltaAlpha -= 360;
-        if (deltaAlpha < -180) deltaAlpha += 360;
-        deltaX = -deltaAlpha / 40; 
-      } else {
-        deltaX = isBetaPitch ? (e.gamma - baseGamma) / 40 : (e.beta - baseBeta) / 40;
-      }
-      let deltaY = isBetaPitch ? (e.beta - baseBeta) / 30 : (e.gamma - baseGamma) / 30;
-      targetMouseX = Math.max(-1.5, Math.min(1.5, deltaX));
-      targetMouseY = Math.max(-1.5, Math.min(1.5, deltaY));
+
+      // 計算偏移量
+      let deltaX = x - baseX;
+      let deltaY = y - baseY;
+
+      // 防止跨越 -180/180 邊界時數值跳變
+      if (deltaX > 90) deltaX -= 180; else if (deltaX < -90) deltaX += 180;
+      if (deltaY > 90) deltaY -= 180; else if (deltaY < -90) deltaY += 180;
+
+      // 限制視角的移動極限 (最大 1.2，避免攝影機跑太遠導致 DNA 看起來像傾斜)
+      targetMouseX = Math.max(-1.2, Math.min(1.2, deltaX / 25));
+      targetMouseY = Math.max(-1.2, Math.min(1.2, deltaY / 25));
     }
 
-    // 滑鼠適配
+    // --- 2. 滑鼠適配與 UI 邏輯 ---
     const cursor = document.getElementById('cursor');
     if (window.matchMedia("(pointer: fine)").matches) {
       document.addEventListener('mousemove', e => {
@@ -280,7 +299,7 @@
     function openPanel(id) { document.querySelector('.page.active .content-box').classList.add('shrink'); document.getElementById('panelContent').innerHTML = `<h2 class="panel-title">${detailData[id].title}</h2><p class="panel-text">${detailData[id].text}</p>`; document.getElementById('sidePanel').classList.add('open'); }
     function closePanel() { document.querySelector('.page.active .content-box').classList.remove('shrink'); document.getElementById('sidePanel').classList.remove('open'); }
 
-    // --- 2. 觸控與滑動 ---
+    // --- 3. 觸控與滑動翻頁 ---
     const pages = document.querySelectorAll('.page');
     const scrollPerNode = 1000; 
     const maxScroll = (pages.length - 1) * scrollPerNode;
@@ -302,7 +321,7 @@
       touchStartY = e.touches[0].clientY; 
     }, { passive: true });
 
-    // --- 3. 3D 場景 ---
+    // --- 4. 3D 場景構建 ---
     const canvas = document.getElementById('bg-canvas');
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -337,33 +356,32 @@
     let baseRotation = 0;
     let currentTwist = 0;
 
-    // --- 4. 全新 3D 攝影機邏輯 ---
+    // --- 5. 渲染與動畫循環 ---
     function animate() {
       requestAnimationFrame(animate);
       virtualScroll += (targetScroll - virtualScroll) * 0.08;
       mouseX += (targetMouseX - mouseX) * 0.1;
       mouseY += (targetMouseY - mouseY) * 0.1;
 
-      // 【核心修正1】滑動網頁時，攝影機沿著 Y 軸像搭電梯一樣往下走
-      // 這樣 DNA 不會變形，更不會越跑越遠
+      // 攝影機沿 Y 軸像搭電梯一樣往下走
       let camBaseY = -virtualScroll * 0.15; 
       
-      // 【核心修正2 & 3】滑鼠/平板左右上下移動，現在是「平移空拍機」！
-      camera.position.x = mouseX * 50;           // 左右真實平移
-      camera.position.y = camBaseY + (mouseY * 40); // 上下真實平移 (疊加電梯高度)
-      camera.position.z = 240 + (Math.abs(mouseX) * 10); // 稍微增加一點立體景深
+      // 攝影機真實平移 (Pan)
+      camera.position.x = mouseX * 50;           
+      camera.position.y = camBaseY + (mouseY * 40); 
+      camera.position.z = 240 + (Math.abs(mouseX) * 10); 
 
-      // 攝影機永遠看向前方稍微偏移的位置 (Parallax 視差效果)，不再死盯著中心點
+      // 攝影機看向前方稍微偏移的位置 (Parallax)
       camera.lookAt(mouseX * 15, camBaseY + (mouseY * 15), 0);
 
-      // DNA 現在只負責安靜地在中心自轉，不再因為你的滑鼠而左傾右倒
+      // DNA 只在中心自轉，不隨設備傾斜
       let scrollVelocity = targetScroll - virtualScroll; 
       let targetTwist = scrollVelocity * 0.002;
       currentTwist += (targetTwist - currentTwist) * 0.05; 
       baseRotation -= 0.0015; 
       dnaSystem.rotation.y = baseRotation - currentTwist;
       
-      // 取消 DNA 奇怪的 X, Z 軸旋轉，保持垂直！
+      // 鎖死 DNA 的 X 和 Z 軸旋轉，確保永遠垂直
       dnaSystem.rotation.x = 0;
       dnaSystem.rotation.z = 0;
 
@@ -381,12 +399,19 @@
     }
     animate();
 
-    // --- 5. 日誌系統 ---
+    // --- 6. 矩陣日誌系統 ---
     const logs = [ "2023 WRO國際機械人賽 澳門區金獎", "全國青少年科技創新大賽 一等獎", "澳門學界田徑比賽 男子A組團體總冠軍" ];
     const matrixBox = document.getElementById('matrix');
     let logInterval = null; let logIndex = 0;
     function startMatrixLogs() { if (logInterval) return; matrixBox.innerHTML = ''; logInterval = setInterval(() => { const div = document.createElement('div'); div.className = 'log-line'; const hex = Math.random().toString(16).substring(2, 8).toUpperCase(); div.innerHTML = `[SYS.LOG.0x${hex}] ARCHIVE SYNC >> <span>${logs[logIndex % logs.length]}</span>`; matrixBox.appendChild(div); logIndex++; matrixBox.scrollTop = matrixBox.scrollHeight; if (matrixBox.childElementCount > 40) matrixBox.removeChild(matrixBox.firstChild); }, 150); }
     function stopMatrixLogs() { clearInterval(logInterval); logInterval = null; }
+    
+    // 監聽視窗重置大小
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
   </script>
 </body>
 </html>

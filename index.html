@@ -33,7 +33,6 @@
     .start-btn.ready { opacity: 1; pointer-events: auto; }
     .start-btn:hover { color: var(--accent); text-shadow: 0 0 15px var(--accent); }
 
-    /* 校準提示升級 */
     .calibration-hint {
       position: absolute; top: calc(50% + 140px); font-size: 0.8rem; color: #00ffff;
       letter-spacing: 0.1em; opacity: 0; transition: opacity 1s ease; pointer-events: none;
@@ -210,7 +209,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-    // --- 1. VR 智能校準與陀螺儀系統 ---
+    // --- 1. 系統加載與 Gyro 邏輯 ---
     let progress = 0;
     const loadingInterval = setInterval(() => {
       progress += Math.random() * 15;
@@ -223,60 +222,37 @@
 
     let isCalibrated = false;
     let baseAlpha = 0, baseBeta = 0, baseGamma = 0;
-    let isBetaPitch = true; // 記錄哪個軸負責「點頭」
+    let isBetaPitch = true;
     let targetMouseX = 0; let targetMouseY = 0; let mouseX = 0; let mouseY = 0;
 
     function enterSystem() {
       isCalibrated = false; 
-
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission()
-          .then(permissionState => {
-            if (permissionState === 'granted') {
-              window.addEventListener('deviceorientation', handleGyro, true);
-            }
-          }).catch(console.error);
-      } else {
-        window.addEventListener('deviceorientation', handleGyro, true);
-      }
+          .then(permissionState => { if (permissionState === 'granted') { window.addEventListener('deviceorientation', handleGyro, true); } })
+          .catch(console.error);
+      } else { window.addEventListener('deviceorientation', handleGyro, true); }
       document.getElementById('loader').style.opacity = '0';
       setTimeout(() => document.getElementById('loader').style.display = 'none', 1000);
     }
 
     function handleGyro(e) {
       if (document.getElementById('sidePanel').classList.contains('open')) return;
-      
-      // 第一次啟動時，鎖定中心點，並【動態偵測軸向】
       if (!isCalibrated) {
-        baseAlpha = e.alpha || 0;
-        baseBeta = e.beta || 0;
-        baseGamma = e.gamma || 0;
-        
-        // 核心突破：不管你是橫著拿、豎著拿，哪個角度大，那個就是負責上下俯仰的軸！
+        baseAlpha = e.alpha || 0; baseBeta = e.beta || 0; baseGamma = e.gamma || 0;
         isBetaPitch = Math.abs(e.beta) > Math.abs(e.gamma);
-        
-        isCalibrated = true;
-        return;
+        isCalibrated = true; return;
       }
-
-      // X 軸 (左右視角)：啟用真實 VR 偏航角 (Yaw / Alpha)
       let deltaX = 0;
       if (e.alpha !== null && e.alpha !== undefined) {
         let deltaAlpha = e.alpha - baseAlpha;
-        // 防止 360 度跨越邊界時視角亂跳
         if (deltaAlpha > 180) deltaAlpha -= 360;
         if (deltaAlpha < -180) deltaAlpha += 360;
-        
-        // 身體往右轉，攝像機往右走 (反向綁定讓場景更沉浸)
         deltaX = -deltaAlpha / 40; 
       } else {
-        // 如果少數平板沒有內建羅盤，退回到方向盤模式
         deltaX = isBetaPitch ? (e.gamma - baseGamma) / 40 : (e.beta - baseBeta) / 40;
       }
-
-      // Y 軸 (抬頭低頭)：使用智能偵測到的軸向
       let deltaY = isBetaPitch ? (e.beta - baseBeta) / 30 : (e.gamma - baseGamma) / 30;
-
       targetMouseX = Math.max(-1.5, Math.min(1.5, deltaX));
       targetMouseY = Math.max(-1.5, Math.min(1.5, deltaY));
     }
@@ -292,8 +268,7 @@
         document.querySelectorAll('.interactive-title').forEach(title => {
           const rect = title.getBoundingClientRect();
           if(e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
-            title.style.setProperty('--x', (e.clientX - rect.left) + 'px');
-            title.style.setProperty('--y', (e.clientY - rect.top) + 'px');
+            title.style.setProperty('--x', (e.clientX - rect.left) + 'px'); title.style.setProperty('--y', (e.clientY - rect.top) + 'px');
           } else {
             title.style.setProperty('--x', '-100px'); title.style.setProperty('--y', '-100px');
           }
@@ -333,7 +308,6 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 240;
 
     const dustGeo = new THREE.BufferGeometry();
     const dustPos = new Float32Array(4500);
@@ -345,7 +319,7 @@
 
     const dnaGeo = new THREE.BufferGeometry();
     const dnaPos = new Float32Array(18000 * 3);
-    const radius = 40; const spreadY = 3500; 
+    const radius = 40; const spreadY = 3500; // DNA 總高度
     for(let i=0; i<18000; i++) {
       const type = Math.random();
       let t = (Math.random() - 0.5) * spreadY; 
@@ -363,34 +337,38 @@
     let baseRotation = 0;
     let currentTwist = 0;
 
-    // --- 4. 動畫渲染引擎 ---
+    // --- 4. 全新 3D 攝影機邏輯 ---
     function animate() {
       requestAnimationFrame(animate);
       virtualScroll += (targetScroll - virtualScroll) * 0.08;
       mouseX += (targetMouseX - mouseX) * 0.1;
       mouseY += (targetMouseY - mouseY) * 0.1;
 
-      dnaSystem.position.y = virtualScroll * 0.06;
-      dustSystem.position.y = virtualScroll * 0.02 + mouseY * 20;
+      // 【核心修正1】滑動網頁時，攝影機沿著 Y 軸像搭電梯一樣往下走
+      // 這樣 DNA 不會變形，更不會越跑越遠
+      let camBaseY = -virtualScroll * 0.15; 
       
-      // 聯動環境旋轉
-      dustSystem.rotation.x = mouseY * 0.6; 
-      dustSystem.rotation.y = mouseX * 0.6; 
-      dnaSystem.rotation.x = mouseY * 0.6; 
-      dnaSystem.rotation.z = -mouseX * 0.5; 
-      
-      // 攝像機位移
-      camera.position.x = mouseX * 30; 
-      camera.position.y = mouseY * 30;
-      camera.lookAt(0, virtualScroll * 0.06, 0);
+      // 【核心修正2 & 3】滑鼠/平板左右上下移動，現在是「平移空拍機」！
+      camera.position.x = mouseX * 50;           // 左右真實平移
+      camera.position.y = camBaseY + (mouseY * 40); // 上下真實平移 (疊加電梯高度)
+      camera.position.z = 240 + (Math.abs(mouseX) * 10); // 稍微增加一點立體景深
 
-      // 滾輪聯動扭曲特效
+      // 攝影機永遠看向前方稍微偏移的位置 (Parallax 視差效果)，不再死盯著中心點
+      camera.lookAt(mouseX * 15, camBaseY + (mouseY * 15), 0);
+
+      // DNA 現在只負責安靜地在中心自轉，不再因為你的滑鼠而左傾右倒
       let scrollVelocity = targetScroll - virtualScroll; 
-      let targetTwist = scrollVelocity * 0.0025;
+      let targetTwist = scrollVelocity * 0.002;
       currentTwist += (targetTwist - currentTwist) * 0.05; 
-      
       baseRotation -= 0.0015; 
-      dnaSystem.rotation.y = baseRotation - (virtualScroll * 0.001) - currentTwist;
+      dnaSystem.rotation.y = baseRotation - currentTwist;
+      
+      // 取消 DNA 奇怪的 X, Z 軸旋轉，保持垂直！
+      dnaSystem.rotation.x = 0;
+      dnaSystem.rotation.z = 0;
+
+      // 星塵稍微聯動
+      dustSystem.position.y = camBaseY * 0.5;
 
       let calculatedPage = Math.round(virtualScroll / scrollPerNode);
       if (calculatedPage !== curPage) {

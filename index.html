@@ -1,147 +1,428 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-MO">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>正在跳轉...</title>
-    <!-- 使用元刷新标签实现即时跳转 -->
-    <meta http-equiv="refresh" content="0; url=https://www.bilibili.com/video/BV1UT42167xb/?spm_id_from=333.337.search-card.all.click">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-            color: white;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            text-align: center;
-        }
-        
-        .container {
-            max-width: 600px;
-            width: 100%;
-            padding: 40px;
-            background-color: rgba(0, 0, 0, 0.7);
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
-            border: 3px solid gold;
-        }
-        
-        h1 {
-            font-size: 2.8rem;
-            margin-bottom: 25px;
-            color: #ffde59;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-        }
-        
-        .loading {
-            font-size: 1.8rem;
-            margin: 30px 0;
-        }
-        
-        .loader {
-            border: 8px solid rgba(255, 255, 255, 0.3);
-            border-top: 8px solid #ffde59;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            animation: spin 2s linear infinite;
-            margin: 0 auto 30px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .redirect-button {
-            background: linear-gradient(to right, #ff416c, #ff4b2b);
-            color: white;
-            border: none;
-            padding: 18px 45px;
-            font-size: 1.8rem;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            margin: 30px auto;
-            display: block;
-            transition: all 0.3s ease;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-            text-decoration: none;
-        }
-        
-        .redirect-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
-            background: linear-gradient(to right, #ff4b2b, #ff416c);
-        }
-        
-        .note {
-            margin-top: 30px;
-            font-size: 1.1rem;
-            color: #ddd;
-            background-color: rgba(0, 0, 0, 0.3);
-            padding: 15px;
-            border-radius: 15px;
-            border-left: 5px solid #ffde59;
-        }
-        
-        .footer {
-            margin-top: 30px;
-            font-size: 0.9rem;
-            color: #aaa;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escola Fong Chong da Taipa | 氹仔坊眾學校</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&family=Noto+Sans+TC:wght@300;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root { --accent: #00ffff; --curve: cubic-bezier(0.25, 1, 0.3, 1); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    
+    body, html { 
+      background: radial-gradient(circle at 50% 50%, #0a1930 0%, #010308 100%); 
+      color: #fff; font-family: 'Noto Sans TC', sans-serif; overflow: hidden; height: 100vh; cursor: none; 
+      /* 防止手機上下滑動時觸發瀏覽器原生的刷新或回彈 */
+      touch-action: none; 
+    }
+
+    #loader {
+      position: fixed; inset: 0; background: #010308; z-index: 10000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      transition: opacity 1s var(--curve);
+    }
+    .loading-zh { font-size: 2.2rem; letter-spacing: 0.2em; font-weight: 500; text-align: center; }
+    .loading-en { font-family: 'Space Grotesk'; font-size: 0.9rem; letter-spacing: 0.3em; color: var(--accent); margin-top: 10px; text-align: center; opacity: 0.8; }
+    .progress-box { width: 250px; height: 1px; background: rgba(255,255,255,0.1); margin-top: 40px; position: relative; transition: opacity 0.5s; }
+    .bar { height: 100%; width: 0%; background: var(--accent); box-shadow: 0 0 15px var(--accent); transition: width 0.1s linear; }
+    
+    .start-btn {
+      margin-top: 30px; background: none; border: none; color: #fff; font-family: 'Space Grotesk'; 
+      font-size: 0.9rem; letter-spacing: 0.5em; cursor: none; opacity: 0; pointer-events: none;
+      transition: opacity 1s ease, color 0.3s, text-shadow 0.3s; position: absolute; top: calc(50% + 80px);
+    }
+    .start-btn.ready { opacity: 1; pointer-events: auto; }
+    .start-btn:hover { color: var(--accent); text-shadow: 0 0 15px var(--accent); }
+
+    /* 手機端隱藏自定義游標 */
+    @media (pointer: coarse) { #cursor { display: none !important; } body, html { cursor: auto; } }
+
+    #cursor {
+      position: fixed; width: 30px; height: 30px; pointer-events: none; z-index: 99999;
+      transform: translate(-50%, -50%) rotate(45deg); transition: transform 0.2s var(--curve);
+    }
+    #cursor::before, #cursor::after { content: ''; position: absolute; background: #fff; left: 50%; top: 50%; transform: translate(-50%, -50%); transition: background 0.3s; }
+    #cursor::before { width: 1.5px; height: 16px; }
+    #cursor::after { width: 16px; height: 1.5px; }
+    body.hover-interact #cursor { transform: translate(-50%, -50%) rotate(0deg); }
+    body.hover-interact #cursor::before, body.hover-interact #cursor::after { background: var(--accent); height: 22px; width: 2px; }
+    body.hover-interact #cursor::after { width: 22px; height: 2px; }
+
+    #bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; display: block; }
+    
+    .viewport { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+    .page {
+      position: absolute; inset: 0; display: flex; align-items: center; padding: 0 10%;
+      opacity: 0; transform: scale(1.05); pointer-events: none; transition: opacity 0.8s ease, transform 0.8s ease; z-index: 1;
+    }
+    .page.active { opacity: 1; transform: scale(1); pointer-events: auto; z-index: 10; }
+
+    .content-box { width: 100%; max-width: 800px; transition: all 0.8s var(--curve); }
+    .content-box.shrink { transform: scale(0.6) translate(-100px, 0); opacity: 0.4; pointer-events: none; }
+
+    .tag { font-family: 'Space Grotesk'; font-size: 0.8rem; color: rgba(255,255,255,0.4); letter-spacing: 0.3em; margin-bottom: 15px; display: block; }
+    
+    .interactive-title {
+      font-size: clamp(2.5rem, 6vw, 5rem); font-weight: 700; cursor: none; display: inline-block;
+      color: transparent; -webkit-text-stroke: 1.5px var(--accent); position: relative; margin-bottom: 20px;
+    }
+    /* 手機端強制顯示實心文字，取消鏤空遮罩互動 */
+    @media (pointer: coarse) { 
+      .interactive-title { color: #fff; -webkit-text-stroke: 0; }
+      .interactive-title::after { display: none; }
+    }
+    .interactive-title::after {
+      content: attr(data-text); position: absolute; left: 0; top: 0; color: #fff; -webkit-text-stroke: 0;
+      -webkit-mask-image: radial-gradient(circle 80px at var(--x, -100px) var(--y, -100px), transparent 95%, black 100%);
+      mask-image: radial-gradient(circle 80px at var(--x, -100px) var(--y, -100px), transparent 95%, black 100%); pointer-events: none;
+    }
+    
+    .desc { font-size: clamp(1rem, 2vw, 1.15rem); line-height: 2; color: rgba(255,255,255,0.7); font-weight: 300; }
+
+    .action-btn {
+      display: inline-block; margin-top: 30px; padding: 15px 35px;
+      background: rgba(0, 255, 255, 0.05); border: 1px solid rgba(0, 255, 255, 0.3);
+      color: var(--accent); font-family: 'Space Grotesk'; font-size: 0.9rem; letter-spacing: 0.2em;
+      cursor: none; transition: all 0.3s ease; position: relative; overflow: hidden;
+    }
+    @media (pointer: coarse) { .action-btn { cursor: pointer; } }
+    .action-btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 25px rgba(0, 255, 255, 0.5); font-weight: bold; }
+
+    .side-panel {
+      position: fixed; right: 0; top: 0; width: 45vw; height: 100vh;
+      background: rgba(4, 10, 20, 0.85); backdrop-filter: blur(25px); border-left: 1px solid rgba(0,255,255,0.15);
+      z-index: 100; transform: translateX(100%); transition: transform 0.8s var(--curve);
+      padding: 15vh 5vw; display: flex; flex-direction: column; justify-content: center;
+    }
+    @media (max-width: 768px) { .side-panel { width: 100vw; padding: 15vh 10vw; } }
+    .side-panel.open { transform: translateX(0); }
+    .panel-title { font-size: 2.5rem; color: var(--accent); margin-bottom: 1.5rem; }
+    .panel-text { font-size: 1.1rem; line-height: 2.2; color: #e0e0e0; font-weight: 300;}
+    .close-btn { position: absolute; top: 40px; right: 40px; color: var(--accent); font-family: 'Space Grotesk'; font-size: 0.9rem; letter-spacing: 0.2em; cursor: none; transition: 0.3s; }
+    @media (pointer: coarse) { .close-btn { cursor: pointer; } }
+    .close-btn:hover { color: #fff; text-shadow: 0 0 15px var(--accent); }
+
+    /* --- 真·系統日誌終端樣式 --- */
+    .matrix-wrap { 
+      width: 100%; height: 40vh; overflow-y: auto; overflow-x: hidden; position: relative; margin-top: 2rem; 
+      scroll-behavior: smooth;
+      scrollbar-width: none; -ms-overflow-style: none;
+      mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent); 
+      -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent); 
+    }
+    .matrix-wrap::-webkit-scrollbar { display: none; }
+    
+    .log-line { 
+      font-family: 'JetBrains Mono', monospace; 
+      font-size: 0.85rem; 
+      color: rgba(0,255,255,0.6); 
+      margin-bottom: 8px; /* 縮小行距，更有刷屏感 */
+      animation: logEntry 0.15s ease-out forwards; /* 更快、更硬朗的彈出動畫 */
+    }
+    
+    @keyframes logEntry {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 恢復正常實心字體，取消傾斜和鏤空 */
+    .log-line span { 
+      color: #e0e0e0; 
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: normal; 
+      letter-spacing: 0;
+      margin-left: 15px; 
+      transition: 0.2s;
+    }
+    
+    .log-line:hover, .log-line:hover span { 
+      color: #fff; 
+      text-shadow: 0 0 8px rgba(0, 255, 255, 0.8); 
+      cursor: none; 
+    }
+    @media (pointer: coarse) { .log-line:hover, .log-line:hover span { cursor: pointer; } }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>正在為您跳轉...</h1>
-        
-        <div class="loader"></div>
-        
-        <div class="loading">
-            即將為您載入，請稍候...
-        </div>
-        
-        <!-- 备用跳转按钮 -->
-        <a href="https://www.bilibili.com/video/BV1UT42167xb/?spm_id_from=333.337.search-card.all.click" class="redirect-button" id="redirectBtn">
-            <i class="fas fa-play-circle"></i> 點我立即觀看
-        </a>
-        
-        <div class="note">
-            <p>如果頁面沒有自動跳轉，請點擊上方按鈕繼續</p>
-        </div>
-        
-        <div class="footer">
-            <p></p>
-        </div>
-    </div>
+
+  <div id="cursor"></div>
+
+  <div id="loader">
+    <div class="loading-zh">氹仔坊眾學校</div>
+    <div class="loading-en">Escola Fong Chong da Taipa</div>
+    <div class="progress-box" id="pBox"><div class="bar" id="bar"></div></div>
+    <button class="start-btn clickable" id="startBtn" onclick="enterSystem()">[ INITIALIZE SYSTEM ]</button>
+  </div>
+
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="viewport">
+    <section class="page active" data-index="0">
+      <div class="content-box">
+        <span class="tag">01 // ORIGIN // 1966</span>
+        <h1 class="interactive-title clickable" data-text="街坊互助精神" onclick="openPanel('p1')">街坊互助精神</h1>
+        <p class="desc">1966年，為解決離島子弟就學困難，氹仔居民自發籌款創立本校。憑藉愛國愛澳精神，點燃了氹仔坊眾學校的全人教育星火，半個世紀以來始終是社區文化的堅實地標。</p>
+      </div>
+    </section>
+    <section class="page" data-index="1">
+      <div class="content-box">
+        <span class="tag">02 // KINDERGARTEN</span>
+        <h1 class="interactive-title clickable" data-text="K1-K3 啟蒙探究" onclick="openPanel('p2')">K1-K3 啟蒙探究</h1>
+        <p class="desc">打破教室邊界，將社區化作最生動的課堂。帶領幼兒走進街市認識蔬果、前往公園親近自然。透過趣味編程啟蒙與榨果汁等生活實作，在快樂探究中建立認知與獨立人格。</p>
+      </div>
+    </section>
+    <section class="page" data-index="2">
+      <div class="content-box">
+        <span class="tag">03 // PRIMARY</span>
+        <h1 class="interactive-title clickable" data-text="P1-P6 多元底座" onclick="openPanel('p3')">P1-P6 多元底座</h1>
+        <p class="desc">全面推行「閱讀閱開心」計劃，夯實語文基礎。實施英語與數學分組分層教學，確保每位學子皆能跟上進度。透過多元社團活動與《基本法》推廣，培養五育並重的社會小公民。</p>
+      </div>
+    </section>
+    <section class="page" data-index="3">
+      <div class="content-box">
+        <span class="tag">04 // SECONDARY</span>
+        <h1 class="interactive-title clickable" data-text="走班學習與智慧平台" onclick="openPanel('p4')">走班學習與智慧平台</h1>
+        <p class="desc">初中部率先實施「走班學習」模式，精準對接學生能力。全面引入智慧教學平台，大數據實時監測學習軌跡，提供個性化輔導方案，賦能高效自主學習。</p>
+      </div>
+    </section>
+    <section class="page" data-index="4">
+      <div class="content-box">
+        <span class="tag">05 // STEAM & AI</span>
+        <h1 class="interactive-title clickable" data-text="人工智能與創客體系" onclick="openPanel('p5')">人工智能與創客體系</h1>
+        <p class="desc">紮根未來，從小學到中學系統性引入 AI 與 STEAM 課程。在專屬 Maker Space 創客實驗室中，學子將理論化為實物，於國際發明展與全國機器人大賽中屢奪金獎。</p>
+      </div>
+    </section>
+    <section class="page" data-index="5">
+      <div class="content-box">
+        <span class="tag">06 // PHILOSOPHY</span>
+        <h1 class="interactive-title clickable" data-text="明禮進取·全人發展" onclick="openPanel('p6')">明禮進取·全人發展</h1>
+        <p class="desc">秉持「明禮、進取、勤奮、創新」校訓。德育為先，透過豐富的社會實踐培養責任感；英文拔尖班輔導雅思達標，為學生搭建通往國際頂尖學府的橋樑。</p>
+      </div>
+    </section>
+    <section class="page" data-index="6">
+      <div class="content-box" style="max-width: 1000px;">
+        <span class="tag">07 // SYSTEM LOGS</span>
+        <h1 class="interactive-title" data-text="全校榮耀矩陣">全校榮耀矩陣</h1>
+        <p class="desc">探索 FCT 歷年來在科技、學術與體育領域的輝煌成就。</p>
+        <button class="action-btn clickable" onclick="window.open('https://www.fctweb.org', '_blank')">[ ENTER OFFICIAL SITE ]</button>
+        <div class="matrix-wrap" id="matrix"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="side-panel" id="sidePanel">
+    <div class="close-btn clickable" onclick="closePanel()">[ CLOSE ]</div>
+    <div id="panelContent"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // --- 1. 初始化與游標 ---
+    let progress = 0;
+    const loadingInterval = setInterval(() => {
+      progress += Math.random() * 15;
+      if (progress >= 100) {
+        progress = 100; clearInterval(loadingInterval);
+        setTimeout(() => { document.getElementById('pBox').style.opacity = '0'; document.getElementById('startBtn').classList.add('ready'); }, 400);
+      }
+      document.getElementById('bar').style.width = progress + '%';
+    }, 80);
+
+    function enterSystem() {
+      document.getElementById('loader').style.opacity = '0';
+      setTimeout(() => document.getElementById('loader').style.display = 'none', 1000);
+    }
+
+    let targetMouseX = 0; let targetMouseY = 0; let mouseX = 0; let mouseY = 0;
+
+    const cursor = document.getElementById('cursor');
+    if (window.matchMedia("(pointer: fine)").matches) {
+      document.addEventListener('mousemove', e => {
+        cursor.style.left = e.clientX + 'px'; cursor.style.top = e.clientY + 'px';
+        targetMouseX = (e.clientX / window.innerWidth) * 2 - 1;
+        targetMouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        document.querySelectorAll('.interactive-title').forEach(title => {
+          const rect = title.getBoundingClientRect();
+          if(e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            title.style.setProperty('--x', (e.clientX - rect.left) + 'px');
+            title.style.setProperty('--y', (e.clientY - rect.top) + 'px');
+          } else {
+            title.style.setProperty('--x', '-100px'); title.style.setProperty('--y', '-100px');
+          }
+        });
+      });
+      
+      document.querySelectorAll('.clickable').forEach(el => {
+        el.addEventListener('mouseenter', () => document.body.classList.add('hover-interact'));
+        el.addEventListener('mouseleave', () => document.body.classList.remove('hover-interact'));
+      });
+    }
+
+    const detailData = {
+      p1: { title: "創校沿革", text: "半世紀前，氹仔居民有感於子弟跨海求學之艱辛，遂自發組織籌建學校。這份『我為人人，人人為我』的街坊互助精神，至今仍是 FCT 最寶貴的文化基因。" },
+      p2: { title: "探究式啟蒙", text: "我們摒棄傳統的填鴨式教學，採用主題式探究。例如帶領幼兒走訪消防局、街市；或引導幼兒進行垃圾分類實作，讓知識從生活中長出來。" },
+      p3: { title: "多元基礎教育", text: "小學部致力於打穩學術與品格的雙重底座。針對語文能力推行閱讀獎勵計劃；針對數理邏輯引入珠心算。此外超過三十種課外社團，讓每位學生找到閃光點。" },
+      p4: { title: "智慧中學體系", text: "初中部實施『走班學習』，讓學生在核心科目上根據自身程度進入最適合的班級。同時引入先進智慧教學平台，實現精準教學。" },
+      p5: { title: "創客與 AI 搖籃", text: "設有專屬 Maker Space。從基礎的 3D 列印到進階的 VEX 機器人、AI算法，學生將想像化為實體，屢獲國際大獎。" },
+      p6: { title: "全人發展理念", text: "『明禮』教導尊重，『進取』追求卓越。從校內服務到國際志工，我們致力於培養具有家國情懷與國際視野的未來領袖。" }
+    };
+    function openPanel(id) { document.querySelector('.page.active .content-box').classList.add('shrink'); document.getElementById('panelContent').innerHTML = `<h2 class="panel-title">${detailData[id].title}</h2><p class="panel-text">${detailData[id].text}</p>`; document.getElementById('sidePanel').classList.add('open'); }
+    function closePanel() { document.querySelector('.page.active .content-box').classList.remove('shrink'); document.getElementById('sidePanel').classList.remove('open'); }
+
+    // --- 2. 虛擬滾動 & 觸控支援 ---
+    const pages = document.querySelectorAll('.page');
+    const totalPages = pages.length;
+    const scrollPerNode = 1000; 
+    const maxScroll = (totalPages - 1) * scrollPerNode;
     
-    <!-- JavaScript 自动跳转备用方案 -->
-    <script>
-        // 如果5秒后页面仍未跳转，自动点击跳转按钮
-        setTimeout(function() {
-            document.getElementById('redirectBtn').click();
-        }, 5000);
+    let targetScroll = 0; let virtualScroll = 0; let curPage = 0;
+
+    window.addEventListener('wheel', (e) => {
+      if (document.getElementById('sidePanel').classList.contains('open')) return;
+      targetScroll += e.deltaY * 1.2; 
+      targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+    });
+
+    let touchStartY = 0;
+    window.addEventListener('touchstart', (e) => {
+      touchStartY = e.touches[0].clientY;
+      targetMouseX = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+      targetMouseY = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (document.getElementById('sidePanel').classList.contains('open')) return;
+      let currentY = e.touches[0].clientY;
+      let deltaY = touchStartY - currentY; 
+      targetScroll += deltaY * 2.5; 
+      targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+      touchStartY = currentY; 
+      targetMouseX = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+      targetMouseY = -(currentY / window.innerHeight) * 2 + 1;
+    }, { passive: true });
+
+
+    // --- 3. 3D 場景構建 ---
+    const canvas = document.getElementById('bg-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 240;
+
+    const dustGeo = new THREE.BufferGeometry();
+    const dustCount = 1500;
+    const dustPos = new Float32Array(dustCount * 3);
+    for(let i=0; i<dustCount*3; i++) dustPos[i] = (Math.random() - 0.5) * 800;
+    dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+    const dustMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, transparent: true, opacity: 0.4 });
+    const dustSystem = new THREE.Points(dustGeo, dustMat);
+    scene.add(dustSystem);
+
+    const particleCount = 18000;
+    const dnaGeo = new THREE.BufferGeometry();
+    const dnaPos = new Float32Array(particleCount * 3);
+    const radius = 40; const spreadY = 3500; 
+    for(let i=0; i<particleCount; i++) {
+      const type = Math.random();
+      let t = (Math.random() - 0.5) * spreadY; 
+      let angle = t * 0.04; let x, y, z;
+      if(type < 0.35) { x = Math.cos(angle)*radius+(Math.random()-0.5)*3; z = Math.sin(angle)*radius+(Math.random()-0.5)*3; y = t+(Math.random()-0.5)*3; }
+      else if (type < 0.70) { x = Math.cos(angle+Math.PI)*radius+(Math.random()-0.5)*3; z = Math.sin(angle+Math.PI)*radius+(Math.random()-0.5)*3; y = t+(Math.random()-0.5)*3; }
+      else { const rungT = Math.floor(t/12)*12; const rungAngle = rungT*0.04; const lerp = Math.random(); const x1 = Math.cos(rungAngle)*radius, z1 = Math.sin(rungAngle)*radius; const x2 = Math.cos(rungAngle+Math.PI)*radius, z2 = Math.sin(rungAngle+Math.PI)*radius; x = x1+(x2-x1)*lerp+(Math.random()-0.5)*4; z = z1+(z2-z1)*lerp+(Math.random()-0.5)*4; y = rungT+(Math.random()-0.5)*4; }
+      dnaPos[i*3] = x; dnaPos[i*3+1] = y; dnaPos[i*3+2] = z;
+    }
+    dnaGeo.setAttribute('position', new THREE.BufferAttribute(dnaPos, 3));
+    const dnaMat = new THREE.PointsMaterial({ size: 1.5, color: 0x00ffff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
+    const dnaSystem = new THREE.Points(dnaGeo, dnaMat);
+    scene.add(dnaSystem);
+
+    let baseRotation = 0;
+    let currentTwist = 0; 
+
+    // --- 4. 動畫引擎 ---
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      virtualScroll += (targetScroll - virtualScroll) * 0.08;
+      mouseX += (targetMouseX - mouseX) * 0.05;
+      mouseY += (targetMouseY - mouseY) * 0.05;
+
+      dnaSystem.position.y = virtualScroll * 0.06;
+      dustSystem.position.y = virtualScroll * 0.02 + mouseY * 20;
+      dustSystem.rotation.x = mouseY * 0.15; 
+      dustSystem.rotation.y = mouseX * 0.15; 
+      camera.position.x = mouseX * 15;
+      camera.position.y = mouseY * 15;
+
+      let scrollVelocity = targetScroll - virtualScroll; 
+      let targetTwist = scrollVelocity * 0.002;          
+      currentTwist += (targetTwist - currentTwist) * 0.05; 
+      
+      baseRotation -= 0.001; 
+      dnaSystem.rotation.y = baseRotation - (virtualScroll * 0.001) - currentTwist;
+
+      let calculatedPage = Math.round(virtualScroll / scrollPerNode);
+      if (calculatedPage !== curPage) {
+        pages[curPage].classList.remove('active');
+        curPage = calculatedPage;
+        pages[curPage].classList.add('active');
         
-        // 备用跳转方案
-        window.onload = function() {
-            // 尝试使用JavaScript跳转
-            setTimeout(function() {
-                window.location.href = "https://youtu.be/dQw4w9WgXcQ";
-            }, 1000);
-        };
-    </script>
+        if(curPage === 6) { startMatrixLogs(); } else { stopMatrixLogs(); }
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+
+    // --- 5. 無限滾動日誌系統 (極速終端版) ---
+    const logs = [ "2023 WRO國際機械人賽 澳門區金獎", "全國青少年科技創新大賽 一等獎", "WRO國際機械人挑戰賽(加拿大) 季軍", "澳門學界田徑比賽 男子A組團體總冠軍", "VEX機器人亞洲公開賽 總冠軍", "K1-K3 街市尋水果 外出探究活動順利舉行", "初三級珠海長隆畢業旅行 精彩回顧", "學界乒乓球賽再創佳績", "英文拔尖班首批雅思成績達標", "校際歌唱比賽獲特優獎", "全校推行「閱讀閱開心」獎勵計劃", "第29屆莫斯科阿基米得國際發明展 榮獲金獎", "澳門學界龍獅比賽 傳統南獅冠軍", "PAN-PEARL RIVER DELTA PHYSICS OLYMPIAD", "2024 中小學STEAM課程體系升級完成", "SYSTEM_SYNC_ROUTINE_OK", "DATA_STREAM_ESTABLISHED" ];
+    
+    const matrixBox = document.getElementById('matrix');
+    let logInterval = null;
+    let logIndex = 0;
+
+    function startMatrixLogs() {
+      if (logInterval) return; 
+      
+      matrixBox.innerHTML = '';
+      
+      // 速度拉滿：從 800ms 改為 150ms 瘋狂刷屏
+      logInterval = setInterval(() => {
+        const div = document.createElement('div');
+        div.className = 'log-line clickable';
+        const hex = Math.random().toString(16).substring(2, 8).toUpperCase();
+        
+        // 移除了 span 的特殊樣式，讓它回歸常規終端等寬字體
+        div.innerHTML = `[SYS.LOG.0x${hex}] ARCHIVE SYNC >> <span>${logs[logIndex % logs.length]}</span>`;
+        
+        if (window.matchMedia("(pointer: fine)").matches) {
+          div.addEventListener('mouseenter', () => document.body.classList.add('hover-interact'));
+          div.addEventListener('mouseleave', () => document.body.classList.remove('hover-interact'));
+        }
+
+        matrixBox.appendChild(div);
+        logIndex++;
+
+        matrixBox.scrollTo({
+          top: matrixBox.scrollHeight,
+          behavior: 'smooth'
+        });
+
+        // 為了支援更快的滾動，稍微提高 DOM 上限至 45 條再清理
+        if (matrixBox.childElementCount > 45) {
+          matrixBox.removeChild(matrixBox.firstChild);
+        }
+      }, 150);
+    }
+
+    function stopMatrixLogs() {
+      clearInterval(logInterval);
+      logInterval = null;
+    }
+  </script>
 </body>
-
 </html>
-

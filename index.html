@@ -12,7 +12,6 @@
     body, html { 
       background: radial-gradient(circle at 50% 50%, #0a1930 0%, #010308 100%); 
       color: #fff; font-family: 'Noto Sans TC', sans-serif; overflow: hidden; height: 100vh; cursor: none; 
-      /* 防止手機上下滑動時觸發瀏覽器原生的刷新或回彈 */
       touch-action: none; 
     }
 
@@ -34,7 +33,6 @@
     .start-btn.ready { opacity: 1; pointer-events: auto; }
     .start-btn:hover { color: var(--accent); text-shadow: 0 0 15px var(--accent); }
 
-    /* 手機端隱藏自定義游標 */
     @media (pointer: coarse) { #cursor { display: none !important; } body, html { cursor: auto; } }
 
     #cursor {
@@ -66,7 +64,6 @@
       font-size: clamp(2.5rem, 6vw, 5rem); font-weight: 700; cursor: none; display: inline-block;
       color: transparent; -webkit-text-stroke: 1.5px var(--accent); position: relative; margin-bottom: 20px;
     }
-    /* 手機端強制顯示實心文字，取消鏤空遮罩互動 */
     @media (pointer: coarse) { 
       .interactive-title { color: #fff; -webkit-text-stroke: 0; }
       .interactive-title::after { display: none; }
@@ -102,7 +99,6 @@
     @media (pointer: coarse) { .close-btn { cursor: pointer; } }
     .close-btn:hover { color: #fff; text-shadow: 0 0 15px var(--accent); }
 
-    /* --- 真·系統日誌終端樣式 --- */
     .matrix-wrap { 
       width: 100%; height: 40vh; overflow-y: auto; overflow-x: hidden; position: relative; margin-top: 2rem; 
       scroll-behavior: smooth;
@@ -116,8 +112,8 @@
       font-family: 'JetBrains Mono', monospace; 
       font-size: 0.85rem; 
       color: rgba(0,255,255,0.6); 
-      margin-bottom: 8px; /* 縮小行距，更有刷屏感 */
-      animation: logEntry 0.15s ease-out forwards; /* 更快、更硬朗的彈出動畫 */
+      margin-bottom: 8px; 
+      animation: logEntry 0.15s ease-out forwards; 
     }
     
     @keyframes logEntry {
@@ -125,7 +121,6 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* 恢復正常實心字體，取消傾斜和鏤空 */
     .log-line span { 
       color: #e0e0e0; 
       font-family: 'JetBrains Mono', monospace;
@@ -217,7 +212,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-    // --- 1. 初始化與游標 ---
+    // --- 1. 初始化與陀螺儀權限 ---
     let progress = 0;
     const loadingInterval = setInterval(() => {
       progress += Math.random() * 15;
@@ -229,11 +224,38 @@
     }, 80);
 
     function enterSystem() {
+      // 請求陀螺儀權限 (適配 iOS 13+ 及其他手機設備)
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+          .then(permissionState => {
+            if (permissionState === 'granted') {
+              window.addEventListener('deviceorientation', handleOrientation);
+            }
+          }).catch(console.error);
+      } else {
+        // 非 iOS 13+ 設備直接掛載
+        window.addEventListener('deviceorientation', handleOrientation);
+      }
+
       document.getElementById('loader').style.opacity = '0';
       setTimeout(() => document.getElementById('loader').style.display = 'none', 1000);
     }
 
     let targetMouseX = 0; let targetMouseY = 0; let mouseX = 0; let mouseY = 0;
+
+    // 處理陀螺儀數據
+    function handleOrientation(e) {
+      if (document.getElementById('sidePanel').classList.contains('open')) return;
+      // gamma: 左右傾斜 (-90 到 90)
+      // beta: 前後俯仰 (-180 到 180)
+      let gamma = Math.max(-45, Math.min(45, e.gamma || 0));
+      let beta = Math.max(-45, Math.min(60, e.beta || 0));
+      
+      // 將傾斜角度映射為 -1 到 1 的座標，並設定手機傾斜 40度 為舒適的中心視角
+      targetMouseX = gamma / 45;
+      targetMouseY = (beta - 40) / 45; 
+      targetMouseY = Math.max(-1, Math.min(1, targetMouseY));
+    }
 
     const cursor = document.getElementById('cursor');
     if (window.matchMedia("(pointer: fine)").matches) {
@@ -287,8 +309,7 @@
     let touchStartY = 0;
     window.addEventListener('touchstart', (e) => {
       touchStartY = e.touches[0].clientY;
-      targetMouseX = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
-      targetMouseY = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+      // 在觸控開始時，不再強制覆蓋 X/Y，讓陀螺儀保留主要控制權
     }, { passive: true });
 
     window.addEventListener('touchmove', (e) => {
@@ -298,10 +319,7 @@
       targetScroll += deltaY * 2.5; 
       targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
       touchStartY = currentY; 
-      targetMouseX = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
-      targetMouseY = -(currentY / window.innerHeight) * 2 + 1;
     }, { passive: true });
-
 
     // --- 3. 3D 場景構建 ---
     const canvas = document.getElementById('bg-canvas');
@@ -351,10 +369,14 @@
 
       dnaSystem.position.y = virtualScroll * 0.06;
       dustSystem.position.y = virtualScroll * 0.02 + mouseY * 20;
-      dustSystem.rotation.x = mouseY * 0.15; 
-      dustSystem.rotation.y = mouseX * 0.15; 
-      camera.position.x = mouseX * 15;
-      camera.position.y = mouseY * 15;
+      
+      // 【大幅提升動態範圍】從 0.15 加強到 0.4
+      dustSystem.rotation.x = mouseY * 0.4; 
+      dustSystem.rotation.y = mouseX * 0.4; 
+      
+      // 【大幅提升動態範圍】從 15 放大到 50，讓鏡頭搖攝感更誇張
+      camera.position.x = mouseX * 50;
+      camera.position.y = mouseY * 50;
 
       let scrollVelocity = targetScroll - virtualScroll; 
       let targetTwist = scrollVelocity * 0.002;          
@@ -387,16 +409,13 @@
 
     function startMatrixLogs() {
       if (logInterval) return; 
-      
       matrixBox.innerHTML = '';
       
-      // 速度拉滿：從 800ms 改為 150ms 瘋狂刷屏
       logInterval = setInterval(() => {
         const div = document.createElement('div');
         div.className = 'log-line clickable';
         const hex = Math.random().toString(16).substring(2, 8).toUpperCase();
         
-        // 移除了 span 的特殊樣式，讓它回歸常規終端等寬字體
         div.innerHTML = `[SYS.LOG.0x${hex}] ARCHIVE SYNC >> <span>${logs[logIndex % logs.length]}</span>`;
         
         if (window.matchMedia("(pointer: fine)").matches) {
@@ -407,12 +426,8 @@
         matrixBox.appendChild(div);
         logIndex++;
 
-        matrixBox.scrollTo({
-          top: matrixBox.scrollHeight,
-          behavior: 'smooth'
-        });
+        matrixBox.scrollTo({ top: matrixBox.scrollHeight, behavior: 'smooth' });
 
-        // 為了支援更快的滾動，稍微提高 DOM 上限至 45 條再清理
         if (matrixBox.childElementCount > 45) {
           matrixBox.removeChild(matrixBox.firstChild);
         }

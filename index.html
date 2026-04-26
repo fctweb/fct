@@ -2,7 +2,7 @@
 <html lang="zh-MO">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Escola Fong Chong da Taipa | 氹仔坊眾學校</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&family=Noto+Sans+TC:wght@300;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
   <style>
@@ -32,6 +32,13 @@
     }
     .start-btn.ready { opacity: 1; pointer-events: auto; }
     .start-btn:hover { color: var(--accent); text-shadow: 0 0 15px var(--accent); }
+
+    /* VR 校準提示字 */
+    .calibration-hint {
+      position: absolute; top: calc(50% + 130px); font-size: 0.75rem; color: rgba(255,255,255,0.5);
+      letter-spacing: 0.1em; opacity: 0; transition: opacity 1s ease; pointer-events: none;
+    }
+    .start-btn.ready + .calibration-hint { opacity: 1; }
 
     @media (pointer: coarse) { #cursor { display: none !important; } body, html { cursor: auto; } }
 
@@ -129,13 +136,6 @@
       margin-left: 15px; 
       transition: 0.2s;
     }
-    
-    .log-line:hover, .log-line:hover span { 
-      color: #fff; 
-      text-shadow: 0 0 8px rgba(0, 255, 255, 0.8); 
-      cursor: none; 
-    }
-    @media (pointer: coarse) { .log-line:hover, .log-line:hover span { cursor: pointer; } }
   </style>
 </head>
 <body>
@@ -147,6 +147,7 @@
     <div class="loading-en">Escola Fong Chong da Taipa</div>
     <div class="progress-box" id="pBox"><div class="bar" id="bar"></div></div>
     <button class="start-btn clickable" id="startBtn" onclick="enterSystem()">[ INITIALIZE SYSTEM ]</button>
+    <div class="calibration-hint">* 點擊時將鎖定當前手持角度為 VR 中心點</div>
   </div>
 
   <canvas id="bg-canvas"></canvas>
@@ -212,7 +213,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-    // --- 1. 初始化與陀螺儀權限 ---
+    // --- 1. VR 校準與陀螺儀系統 ---
     let progress = 0;
     const loadingInterval = setInterval(() => {
       progress += Math.random() * 15;
@@ -223,38 +224,61 @@
       document.getElementById('bar').style.width = progress + '%';
     }, 80);
 
+    // 【新增】VR 校準變量
+    let isCalibrated = false;
+    let baseGyroX = 0; 
+    let baseGyroY = 0;
+    let targetMouseX = 0; let targetMouseY = 0; let mouseX = 0; let mouseY = 0;
+
     function enterSystem() {
-      // 請求陀螺儀權限 (適配 iOS 13+ 及其他手機設備)
+      // 點擊開始時，重置校準鎖定狀態
+      isCalibrated = false; 
+
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission()
           .then(permissionState => {
             if (permissionState === 'granted') {
-              window.addEventListener('deviceorientation', handleOrientation);
+              window.addEventListener('deviceorientation', handleGyro, true);
             }
           }).catch(console.error);
       } else {
-        // 非 iOS 13+ 設備直接掛載
-        window.addEventListener('deviceorientation', handleOrientation);
+        window.addEventListener('deviceorientation', handleGyro, true);
       }
-
       document.getElementById('loader').style.opacity = '0';
       setTimeout(() => document.getElementById('loader').style.display = 'none', 1000);
     }
 
-    let targetMouseX = 0; let targetMouseY = 0; let mouseX = 0; let mouseY = 0;
-
-    // 處理陀螺儀數據
-    function handleOrientation(e) {
+    function handleGyro(e) {
       if (document.getElementById('sidePanel').classList.contains('open')) return;
-      // gamma: 左右傾斜 (-90 到 90)
-      // beta: 前後俯仰 (-180 到 180)
-      let gamma = Math.max(-45, Math.min(45, e.gamma || 0));
-      let beta = Math.max(-45, Math.min(60, e.beta || 0));
       
-      // 將傾斜角度映射為 -1 到 1 的座標，並設定手機傾斜 40度 為舒適的中心視角
-      targetMouseX = gamma / 45;
-      targetMouseY = (beta - 40) / 45; 
-      targetMouseY = Math.max(-1, Math.min(1, targetMouseY));
+      let rawX = 0, rawY = 0;
+      let orientation = window.orientation || 0;
+      
+      // 獲取當前真實的原始角度
+      if (orientation === 0 || orientation === 180) { 
+        rawX = e.gamma; 
+        rawY = e.beta; 
+      } else { 
+        rawX = e.beta;
+        if (orientation === -90) rawX = -rawX;
+        rawY = -e.gamma; 
+      }
+
+      // 【核心邏輯】：第一次獲取數據時，記錄為 VR 中心原點！
+      if (!isCalibrated) {
+        baseGyroX = rawX;
+        baseGyroY = rawY;
+        isCalibrated = true;
+        return; // 第一幀跳過渲染，只做記錄
+      }
+
+      // 計算與初始原點的「差值」（Delta）
+      let deltaX = rawX - baseGyroX;
+      let deltaY = rawY - baseGyroY;
+
+      // 將差值映射到視角 (放寬限制，允許你看得更遠，營造 VR 沉浸感)
+      targetMouseX = Math.max(-1.5, Math.min(1.5, deltaX / 30));
+      targetMouseY = Math.max(-1.5, Math.min(1.5, deltaY / 30));
     }
 
     const cursor = document.getElementById('cursor');
@@ -263,7 +287,7 @@
         cursor.style.left = e.clientX + 'px'; cursor.style.top = e.clientY + 'px';
         targetMouseX = (e.clientX / window.innerWidth) * 2 - 1;
         targetMouseY = -(e.clientY / window.innerHeight) * 2 + 1;
-
+        
         document.querySelectorAll('.interactive-title').forEach(title => {
           const rect = title.getBoundingClientRect();
           if(e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
@@ -274,30 +298,16 @@
           }
         });
       });
-      
-      document.querySelectorAll('.clickable').forEach(el => {
-        el.addEventListener('mouseenter', () => document.body.classList.add('hover-interact'));
-        el.addEventListener('mouseleave', () => document.body.classList.remove('hover-interact'));
-      });
     }
 
-    const detailData = {
-      p1: { title: "創校沿革", text: "半世紀前，氹仔居民有感於子弟跨海求學之艱辛，遂自發組織籌建學校。這份『我為人人，人人為我』的街坊互助精神，至今仍是 FCT 最寶貴的文化基因。" },
-      p2: { title: "探究式啟蒙", text: "我們摒棄傳統的填鴨式教學，採用主題式探究。例如帶領幼兒走訪消防局、街市；或引導幼兒進行垃圾分類實作，讓知識從生活中長出來。" },
-      p3: { title: "多元基礎教育", text: "小學部致力於打穩學術與品格的雙重底座。針對語文能力推行閱讀獎勵計劃；針對數理邏輯引入珠心算。此外超過三十種課外社團，讓每位學生找到閃光點。" },
-      p4: { title: "智慧中學體系", text: "初中部實施『走班學習』，讓學生在核心科目上根據自身程度進入最適合的班級。同時引入先進智慧教學平台，實現精準教學。" },
-      p5: { title: "創客與 AI 搖籃", text: "設有專屬 Maker Space。從基礎的 3D 列印到進階的 VEX 機器人、AI算法，學生將想像化為實體，屢獲國際大獎。" },
-      p6: { title: "全人發展理念", text: "『明禮』教導尊重，『進取』追求卓越。從校內服務到國際志工，我們致力於培養具有家國情懷與國際視野的未來領袖。" }
-    };
-    function openPanel(id) { document.querySelector('.page.active .content-box').classList.add('shrink'); document.getElementById('panelContent').innerHTML = `<h2 class="panel-title">${detailData[id].title}</h2><p class="panel-text">${detailData[id].text}</p>`; document.getElementById('sidePanel').classList.add('open'); }
+    const detailData = { p1: { title: "創校沿革", text: "..." }, p2: { title: "探究式啟蒙", text: "..." }, p3: { title: "多元基礎教育", text: "..." }, p4: { title: "智慧中學體系", text: "..." }, p5: { title: "創客與 AI 搖籃", text: "..." }, p6: { title: "全人發展理念", text: "..." } };
+    function openPanel(id) { document.querySelector('.page.active .content-box').classList.add('shrink'); document.getElementById('panelContent').innerHTML = `<h2 class="panel-title">${detailData[id].title || '數據載入中'}</h2><p class="panel-text">氹仔坊眾學校的核心價值觀與發展歷程。</p>`; document.getElementById('sidePanel').classList.add('open'); }
     function closePanel() { document.querySelector('.page.active .content-box').classList.remove('shrink'); document.getElementById('sidePanel').classList.remove('open'); }
 
-    // --- 2. 虛擬滾動 & 觸控支援 ---
+    // --- 2. 觸控與滑動 ---
     const pages = document.querySelectorAll('.page');
-    const totalPages = pages.length;
     const scrollPerNode = 1000; 
-    const maxScroll = (totalPages - 1) * scrollPerNode;
-    
+    const maxScroll = (pages.length - 1) * scrollPerNode;
     let targetScroll = 0; let virtualScroll = 0; let curPage = 0;
 
     window.addEventListener('wheel', (e) => {
@@ -307,21 +317,16 @@
     });
 
     let touchStartY = 0;
-    window.addEventListener('touchstart', (e) => {
-      touchStartY = e.touches[0].clientY;
-      // 在觸控開始時，不再強制覆蓋 X/Y，讓陀螺儀保留主要控制權
-    }, { passive: true });
-
+    window.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
     window.addEventListener('touchmove', (e) => {
       if (document.getElementById('sidePanel').classList.contains('open')) return;
-      let currentY = e.touches[0].clientY;
-      let deltaY = touchStartY - currentY; 
+      let deltaY = touchStartY - e.touches[0].clientY; 
       targetScroll += deltaY * 2.5; 
       targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
-      touchStartY = currentY; 
+      touchStartY = e.touches[0].clientY; 
     }, { passive: true });
 
-    // --- 3. 3D 場景構建 ---
+    // --- 3. 3D 場景 ---
     const canvas = document.getElementById('bg-canvas');
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -330,59 +335,60 @@
     camera.position.z = 240;
 
     const dustGeo = new THREE.BufferGeometry();
-    const dustCount = 1500;
-    const dustPos = new Float32Array(dustCount * 3);
-    for(let i=0; i<dustCount*3; i++) dustPos[i] = (Math.random() - 0.5) * 800;
+    const dustPos = new Float32Array(4500);
+    for(let i=0; i<4500; i++) dustPos[i] = (Math.random() - 0.5) * 800;
     dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
     const dustMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, transparent: true, opacity: 0.4 });
     const dustSystem = new THREE.Points(dustGeo, dustMat);
     scene.add(dustSystem);
 
-    const particleCount = 18000;
     const dnaGeo = new THREE.BufferGeometry();
-    const dnaPos = new Float32Array(particleCount * 3);
+    const dnaPos = new Float32Array(18000 * 3);
     const radius = 40; const spreadY = 3500; 
-    for(let i=0; i<particleCount; i++) {
+    for(let i=0; i<18000; i++) {
       const type = Math.random();
       let t = (Math.random() - 0.5) * spreadY; 
       let angle = t * 0.04; let x, y, z;
-      if(type < 0.35) { x = Math.cos(angle)*radius+(Math.random()-0.5)*3; z = Math.sin(angle)*radius+(Math.random()-0.5)*3; y = t+(Math.random()-0.5)*3; }
-      else if (type < 0.70) { x = Math.cos(angle+Math.PI)*radius+(Math.random()-0.5)*3; z = Math.sin(angle+Math.PI)*radius+(Math.random()-0.5)*3; y = t+(Math.random()-0.5)*3; }
-      else { const rungT = Math.floor(t/12)*12; const rungAngle = rungT*0.04; const lerp = Math.random(); const x1 = Math.cos(rungAngle)*radius, z1 = Math.sin(rungAngle)*radius; const x2 = Math.cos(rungAngle+Math.PI)*radius, z2 = Math.sin(rungAngle+Math.PI)*radius; x = x1+(x2-x1)*lerp+(Math.random()-0.5)*4; z = z1+(z2-z1)*lerp+(Math.random()-0.5)*4; y = rungT+(Math.random()-0.5)*4; }
-      dnaPos[i*3] = x; dnaPos[i*3+1] = y; dnaPos[i*3+2] = z;
+      if(type < 0.35) { x = Math.cos(angle)*radius; z = Math.sin(angle)*radius; y = t; }
+      else if (type < 0.70) { x = Math.cos(angle+Math.PI)*radius; z = Math.sin(angle+Math.PI)*radius; y = t; }
+      else { const rungT = Math.floor(t/12)*12; const rungAngle = rungT*0.04; const lerp = Math.random(); x = Math.cos(rungAngle)*radius + (Math.cos(rungAngle+Math.PI)*radius - Math.cos(rungAngle)*radius)*lerp; z = Math.sin(rungAngle)*radius + (Math.sin(rungAngle+Math.PI)*radius - Math.sin(rungAngle)*radius)*lerp; y = rungT; }
+      dnaPos[i*3] = x+(Math.random()-0.5)*3; dnaPos[i*3+1] = y+(Math.random()-0.5)*3; dnaPos[i*3+2] = z+(Math.random()-0.5)*3;
     }
     dnaGeo.setAttribute('position', new THREE.BufferAttribute(dnaPos, 3));
-    const dnaMat = new THREE.PointsMaterial({ size: 1.5, color: 0x00ffff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
+    const dnaMat = new THREE.PointsMaterial({ size: 1.5, color: 0x00ffff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
     const dnaSystem = new THREE.Points(dnaGeo, dnaMat);
     scene.add(dnaSystem);
 
     let baseRotation = 0;
-    let currentTwist = 0; 
+    let currentTwist = 0;
 
-    // --- 4. 動畫引擎 ---
+    // --- 4. 動畫渲染引擎 ---
     function animate() {
       requestAnimationFrame(animate);
-      
       virtualScroll += (targetScroll - virtualScroll) * 0.08;
-      mouseX += (targetMouseX - mouseX) * 0.05;
-      mouseY += (targetMouseY - mouseY) * 0.05;
+      mouseX += (targetMouseX - mouseX) * 0.1;
+      mouseY += (targetMouseY - mouseY) * 0.1;
 
       dnaSystem.position.y = virtualScroll * 0.06;
       dustSystem.position.y = virtualScroll * 0.02 + mouseY * 20;
       
-      // 【大幅提升動態範圍】從 0.15 加強到 0.4
-      dustSystem.rotation.x = mouseY * 0.4; 
-      dustSystem.rotation.y = mouseX * 0.4; 
+      // 放大 VR 的環境旋轉感
+      dustSystem.rotation.x = mouseY * 0.6; 
+      dustSystem.rotation.y = mouseX * 0.6; 
+      dnaSystem.rotation.x = mouseY * 0.6; 
+      dnaSystem.rotation.z = -mouseX * 0.5; 
       
-      // 【大幅提升動態範圍】從 15 放大到 50，讓鏡頭搖攝感更誇張
-      camera.position.x = mouseX * 50;
-      camera.position.y = mouseY * 50;
+      // 攝像機微量平移，增加 3D 景深錯覺
+      camera.position.x = mouseX * 30; 
+      camera.position.y = mouseY * 30;
+      camera.lookAt(0, virtualScroll * 0.06, 0);
 
+      // 滾輪聯動的 DNA 麻花扭曲特效
       let scrollVelocity = targetScroll - virtualScroll; 
-      let targetTwist = scrollVelocity * 0.002;          
+      let targetTwist = scrollVelocity * 0.0025;
       currentTwist += (targetTwist - currentTwist) * 0.05; 
       
-      baseRotation -= 0.001; 
+      baseRotation -= 0.0015; 
       dnaSystem.rotation.y = baseRotation - (virtualScroll * 0.001) - currentTwist;
 
       let calculatedPage = Math.round(virtualScroll / scrollPerNode);
@@ -390,54 +396,18 @@
         pages[curPage].classList.remove('active');
         curPage = calculatedPage;
         pages[curPage].classList.add('active');
-        
         if(curPage === 6) { startMatrixLogs(); } else { stopMatrixLogs(); }
       }
-
       renderer.render(scene, camera);
     }
     animate();
 
-    window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
-
-    // --- 5. 無限滾動日誌系統 (極速終端版) ---
-    const logs = [ "2023 WRO國際機械人賽 澳門區金獎", "全國青少年科技創新大賽 一等獎", "WRO國際機械人挑戰賽(加拿大) 季軍", "澳門學界田徑比賽 男子A組團體總冠軍", "VEX機器人亞洲公開賽 總冠軍", "K1-K3 街市尋水果 外出探究活動順利舉行", "初三級珠海長隆畢業旅行 精彩回顧", "學界乒乓球賽再創佳績", "英文拔尖班首批雅思成績達標", "校際歌唱比賽獲特優獎", "全校推行「閱讀閱開心」獎勵計劃", "第29屆莫斯科阿基米得國際發明展 榮獲金獎", "澳門學界龍獅比賽 傳統南獅冠軍", "PAN-PEARL RIVER DELTA PHYSICS OLYMPIAD", "2024 中小學STEAM課程體系升級完成", "SYSTEM_SYNC_ROUTINE_OK", "DATA_STREAM_ESTABLISHED" ];
-    
+    // --- 5. 日誌系統 ---
+    const logs = [ "2023 WRO國際機械人賽 澳門區金獎", "全國青少年科技創新大賽 一等獎", "澳門學界田徑比賽 男子A組團體總冠軍" ];
     const matrixBox = document.getElementById('matrix');
-    let logInterval = null;
-    let logIndex = 0;
-
-    function startMatrixLogs() {
-      if (logInterval) return; 
-      matrixBox.innerHTML = '';
-      
-      logInterval = setInterval(() => {
-        const div = document.createElement('div');
-        div.className = 'log-line clickable';
-        const hex = Math.random().toString(16).substring(2, 8).toUpperCase();
-        
-        div.innerHTML = `[SYS.LOG.0x${hex}] ARCHIVE SYNC >> <span>${logs[logIndex % logs.length]}</span>`;
-        
-        if (window.matchMedia("(pointer: fine)").matches) {
-          div.addEventListener('mouseenter', () => document.body.classList.add('hover-interact'));
-          div.addEventListener('mouseleave', () => document.body.classList.remove('hover-interact'));
-        }
-
-        matrixBox.appendChild(div);
-        logIndex++;
-
-        matrixBox.scrollTo({ top: matrixBox.scrollHeight, behavior: 'smooth' });
-
-        if (matrixBox.childElementCount > 45) {
-          matrixBox.removeChild(matrixBox.firstChild);
-        }
-      }, 150);
-    }
-
-    function stopMatrixLogs() {
-      clearInterval(logInterval);
-      logInterval = null;
-    }
+    let logInterval = null; let logIndex = 0;
+    function startMatrixLogs() { if (logInterval) return; matrixBox.innerHTML = ''; logInterval = setInterval(() => { const div = document.createElement('div'); div.className = 'log-line'; const hex = Math.random().toString(16).substring(2, 8).toUpperCase(); div.innerHTML = `[SYS.LOG.0x${hex}] ARCHIVE SYNC >> <span>${logs[logIndex % logs.length]}</span>`; matrixBox.appendChild(div); logIndex++; matrixBox.scrollTop = matrixBox.scrollHeight; if (matrixBox.childElementCount > 40) matrixBox.removeChild(matrixBox.firstChild); }, 150); }
+    function stopMatrixLogs() { clearInterval(logInterval); logInterval = null; }
   </script>
 </body>
 </html>

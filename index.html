@@ -33,10 +33,11 @@
     .start-btn.ready { opacity: 1; pointer-events: auto; }
     .start-btn:hover { color: var(--accent); text-shadow: 0 0 15px var(--accent); }
 
-    /* VR 校準提示字 */
+    /* 校準提示升級 */
     .calibration-hint {
-      position: absolute; top: calc(50% + 130px); font-size: 0.75rem; color: rgba(255,255,255,0.5);
+      position: absolute; top: calc(50% + 140px); font-size: 0.8rem; color: #00ffff;
       letter-spacing: 0.1em; opacity: 0; transition: opacity 1s ease; pointer-events: none;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
     }
     .start-btn.ready + .calibration-hint { opacity: 1; }
 
@@ -129,12 +130,8 @@
     }
 
     .log-line span { 
-      color: #e0e0e0; 
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: normal; 
-      letter-spacing: 0;
-      margin-left: 15px; 
-      transition: 0.2s;
+      color: #e0e0e0; font-family: 'JetBrains Mono', monospace; font-weight: normal; 
+      letter-spacing: 0; margin-left: 15px; transition: 0.2s;
     }
   </style>
 </head>
@@ -147,7 +144,7 @@
     <div class="loading-en">Escola Fong Chong da Taipa</div>
     <div class="progress-box" id="pBox"><div class="bar" id="bar"></div></div>
     <button class="start-btn clickable" id="startBtn" onclick="enterSystem()">[ INITIALIZE SYSTEM ]</button>
-    <div class="calibration-hint">* 點擊時將鎖定當前手持角度為 VR 中心點</div>
+    <div class="calibration-hint">* 請將平板豎立正對自己，然後點擊按鈕進入</div>
   </div>
 
   <canvas id="bg-canvas"></canvas>
@@ -213,7 +210,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-    // --- 1. VR 校準與陀螺儀系統 ---
+    // --- 1. VR 智能校準與陀螺儀系統 ---
     let progress = 0;
     const loadingInterval = setInterval(() => {
       progress += Math.random() * 15;
@@ -224,14 +221,12 @@
       document.getElementById('bar').style.width = progress + '%';
     }, 80);
 
-    // 【新增】VR 校準變量
     let isCalibrated = false;
-    let baseGyroX = 0; 
-    let baseGyroY = 0;
+    let baseAlpha = 0, baseBeta = 0, baseGamma = 0;
+    let isBetaPitch = true; // 記錄哪個軸負責「點頭」
     let targetMouseX = 0; let targetMouseY = 0; let mouseX = 0; let mouseY = 0;
 
     function enterSystem() {
-      // 點擊開始時，重置校準鎖定狀態
       isCalibrated = false; 
 
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -251,36 +246,42 @@
     function handleGyro(e) {
       if (document.getElementById('sidePanel').classList.contains('open')) return;
       
-      let rawX = 0, rawY = 0;
-      let orientation = window.orientation || 0;
-      
-      // 獲取當前真實的原始角度
-      if (orientation === 0 || orientation === 180) { 
-        rawX = e.gamma; 
-        rawY = e.beta; 
-      } else { 
-        rawX = e.beta;
-        if (orientation === -90) rawX = -rawX;
-        rawY = -e.gamma; 
-      }
-
-      // 【核心邏輯】：第一次獲取數據時，記錄為 VR 中心原點！
+      // 第一次啟動時，鎖定中心點，並【動態偵測軸向】
       if (!isCalibrated) {
-        baseGyroX = rawX;
-        baseGyroY = rawY;
+        baseAlpha = e.alpha || 0;
+        baseBeta = e.beta || 0;
+        baseGamma = e.gamma || 0;
+        
+        // 核心突破：不管你是橫著拿、豎著拿，哪個角度大，那個就是負責上下俯仰的軸！
+        isBetaPitch = Math.abs(e.beta) > Math.abs(e.gamma);
+        
         isCalibrated = true;
-        return; // 第一幀跳過渲染，只做記錄
+        return;
       }
 
-      // 計算與初始原點的「差值」（Delta）
-      let deltaX = rawX - baseGyroX;
-      let deltaY = rawY - baseGyroY;
+      // X 軸 (左右視角)：啟用真實 VR 偏航角 (Yaw / Alpha)
+      let deltaX = 0;
+      if (e.alpha !== null && e.alpha !== undefined) {
+        let deltaAlpha = e.alpha - baseAlpha;
+        // 防止 360 度跨越邊界時視角亂跳
+        if (deltaAlpha > 180) deltaAlpha -= 360;
+        if (deltaAlpha < -180) deltaAlpha += 360;
+        
+        // 身體往右轉，攝像機往右走 (反向綁定讓場景更沉浸)
+        deltaX = -deltaAlpha / 40; 
+      } else {
+        // 如果少數平板沒有內建羅盤，退回到方向盤模式
+        deltaX = isBetaPitch ? (e.gamma - baseGamma) / 40 : (e.beta - baseBeta) / 40;
+      }
 
-      // 將差值映射到視角 (放寬限制，允許你看得更遠，營造 VR 沉浸感)
-      targetMouseX = Math.max(-1.5, Math.min(1.5, deltaX / 30));
-      targetMouseY = Math.max(-1.5, Math.min(1.5, deltaY / 30));
+      // Y 軸 (抬頭低頭)：使用智能偵測到的軸向
+      let deltaY = isBetaPitch ? (e.beta - baseBeta) / 30 : (e.gamma - baseGamma) / 30;
+
+      targetMouseX = Math.max(-1.5, Math.min(1.5, deltaX));
+      targetMouseY = Math.max(-1.5, Math.min(1.5, deltaY));
     }
 
+    // 滑鼠適配
     const cursor = document.getElementById('cursor');
     if (window.matchMedia("(pointer: fine)").matches) {
       document.addEventListener('mousemove', e => {
@@ -300,8 +301,8 @@
       });
     }
 
-    const detailData = { p1: { title: "創校沿革", text: "..." }, p2: { title: "探究式啟蒙", text: "..." }, p3: { title: "多元基礎教育", text: "..." }, p4: { title: "智慧中學體系", text: "..." }, p5: { title: "創客與 AI 搖籃", text: "..." }, p6: { title: "全人發展理念", text: "..." } };
-    function openPanel(id) { document.querySelector('.page.active .content-box').classList.add('shrink'); document.getElementById('panelContent').innerHTML = `<h2 class="panel-title">${detailData[id].title || '數據載入中'}</h2><p class="panel-text">氹仔坊眾學校的核心價值觀與發展歷程。</p>`; document.getElementById('sidePanel').classList.add('open'); }
+    const detailData = { p1: { title: "創校沿革", text: "半世紀前，氹仔居民有感於子弟跨海求學之艱辛，遂自發組織籌建學校。這份『我為人人，人人為我』的街坊互助精神，至今仍是 FCT 最寶貴的文化基因。" }, p2: { title: "探究式啟蒙", text: "我們摒棄傳統的填鴨式教學，採用主題式探究。例如帶領幼兒走訪消防局、街市；或引導幼兒進行垃圾分類實作，讓知識從生活中長出來。" }, p3: { title: "多元基礎教育", text: "小學部致力於打穩學術與品格的雙重底座。針對語文能力推行閱讀獎勵計劃；針對數理邏輯引入珠心算。此外超過三十種課外社團，讓每位學生找到閃光點。" }, p4: { title: "智慧中學體系", text: "初中部實施『走班學習』，讓學生在核心科目上根據自身程度進入最適合的班級。同時引入先進智慧教學平台，實現精準教學。" }, p5: { title: "創客與 AI 搖籃", text: "設有專屬 Maker Space。從基礎的 3D 列印到進階的 VEX 機器人、AI算法，學生將想像化為實體，屢獲國際大獎。" }, p6: { title: "全人發展理念", text: "『明禮』教導尊重，『進取』追求卓越。從校內服務到國際志工，我們致力於培養具有家國情懷與國際視野的未來領袖。" } };
+    function openPanel(id) { document.querySelector('.page.active .content-box').classList.add('shrink'); document.getElementById('panelContent').innerHTML = `<h2 class="panel-title">${detailData[id].title}</h2><p class="panel-text">${detailData[id].text}</p>`; document.getElementById('sidePanel').classList.add('open'); }
     function closePanel() { document.querySelector('.page.active .content-box').classList.remove('shrink'); document.getElementById('sidePanel').classList.remove('open'); }
 
     // --- 2. 觸控與滑動 ---
@@ -372,18 +373,18 @@
       dnaSystem.position.y = virtualScroll * 0.06;
       dustSystem.position.y = virtualScroll * 0.02 + mouseY * 20;
       
-      // 放大 VR 的環境旋轉感
+      // 聯動環境旋轉
       dustSystem.rotation.x = mouseY * 0.6; 
       dustSystem.rotation.y = mouseX * 0.6; 
       dnaSystem.rotation.x = mouseY * 0.6; 
       dnaSystem.rotation.z = -mouseX * 0.5; 
       
-      // 攝像機微量平移，增加 3D 景深錯覺
+      // 攝像機位移
       camera.position.x = mouseX * 30; 
       camera.position.y = mouseY * 30;
       camera.lookAt(0, virtualScroll * 0.06, 0);
 
-      // 滾輪聯動的 DNA 麻花扭曲特效
+      // 滾輪聯動扭曲特效
       let scrollVelocity = targetScroll - virtualScroll; 
       let targetTwist = scrollVelocity * 0.0025;
       currentTwist += (targetTwist - currentTwist) * 0.05; 

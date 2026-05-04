@@ -2,375 +2,508 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>自动分段录音器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能断句录音笔</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            background: #0f172a;
-            color: #f1f5f9;
-            font-family: system-ui, sans-serif;
+            background: linear-gradient(145deg, #1a2639 0%, #0d1b2a 100%);
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            margin: 0;
             padding: 20px;
         }
-        .card {
-            background: #1e293b;
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
             border-radius: 2rem;
-            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 25px 45px -12px rgba(0, 0, 0, 0.5);
             width: 100%;
-            max-width: 700px;
-            box-shadow: 0 20px 35px -10px black;
+            max-width: 800px;
+            padding: 2rem;
+            transition: all 0.3s ease;
         }
-        h1 { font-size: 1.5rem; margin-top: 0; color: #facc15; }
-        .status {
-            background: #0f172a;
-            padding: 1rem;
-            border-radius: 1rem;
+
+        h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            background: linear-gradient(120deg, #facc15, #ffb347);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sub {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-bottom: 1.5rem;
+            border-left: 2px solid #facc15;
+            padding-left: 1rem;
+        }
+
+        .status-panel {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 1.5rem;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            backdrop-filter: blur(4px);
+        }
+
+        .status-led {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             font-family: monospace;
-            margin: 1rem 0;
-            text-align: center;
+            font-size: 0.9rem;
+            color: #cbd5e1;
         }
-        button {
-            background: #3b82f6;
-            border: none;
-            color: white;
-            font-weight: bold;
-            padding: 0.75rem 1.5rem;
-            margin: 0.5rem;
-            border-radius: 2rem;
-            cursor: pointer;
+
+        .led {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #64748b;
+            box-shadow: 0 0 4px currentColor;
             transition: 0.2s;
         }
-        button:active { transform: scale(0.96); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .danger { background: #ef4444; }
-        .list {
-            margin-top: 2rem;
-            max-height: 400px;
-            overflow-y: auto;
-            border-top: 1px solid #334155;
-            padding-top: 1rem;
+
+        .led.active {
+            background-color: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
         }
-        .item {
-            background: #0f172a;
-            margin: 0.5rem 0;
-            padding: 0.75rem;
-            border-radius: 1rem;
+
+        .led.listening {
+            background-color: #3b82f6;
+            box-shadow: 0 0 8px #3b82f6;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 10px 20px;
+            border-radius: 3rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #f1f5f9;
+            backdrop-filter: blur(4px);
+        }
+
+        .btn-primary {
+            background: #facc15;
+            color: #0f172a;
+            border: none;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: #ffb347;
+            transform: scale(1.02);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+            color: #fecaca;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.4);
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .recordings-section {
+            margin-top: 1.8rem;
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .recordings-list {
+            max-height: 380px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-right: 6px;
+        }
+
+        .recording-item {
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 1.2rem;
+            padding: 12px 16px;
+            backdrop-filter: blur(4px);
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
+            gap: 12px;
+            transition: 0.1s;
+            border: 1px solid rgba(255,255,255,0.05);
         }
-        audio { max-width: 200px; }
-        .rename { background: #eab308; color: black; padding: 0.2rem 0.8rem; border-radius: 2rem; }
-        .download { color: #38bdf8; text-decoration: none; }
-        .small-text { font-size: 0.7rem; color: #94a3b8; margin-top: 1rem; text-align: center; }
+
+        .file-info {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #cbd5e6;
+            background: #0f172a80;
+            padding: 4px 10px;
+            border-radius: 40px;
+        }
+
+        audio {
+            max-width: 200px;
+            border-radius: 40px;
+            height: 36px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .small-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: #f1f5f9;
+        }
+
+        .small-btn.rename {
+            background: #facc1520;
+            color: #fde047;
+        }
+
+        .small-btn.download {
+            background: #3b82f620;
+            color: #7aa9ff;
+        }
+
+        .footer-note {
+            font-size: 0.7rem;
+            color: #62748c;
+            text-align: center;
+            margin-top: 1.5rem;
+            border-top: 1px solid #334155;
+            padding-top: 1rem;
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #facc15;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
-<div class="card">
-    <h1>🎙️ 自动断句录音笔</h1>
-    <div class="status" id="statusMsg">⚪ 点击「开始监听」</div>
-    <div>
-        <button id="startBtn">🔴 开始监听</button>
-        <button id="stopBtn" disabled>⏹️ 停止监测</button>
-        <button id="downloadAllBtn" disabled>📦 打包所有片段</button>
+<div class="glass-card" id="app">
+    <h2>🎙️ 灵听 · 自动断句笔</h2>
+    <div class="sub">说话静音1秒自动分段 · 每句独立保存 · 证据留存</div>
+
+    <div class="status-panel">
+        <div class="status-led">
+            <div class="led" id="micLed"></div>
+            <span id="statusText">⚪ 未授权</span>
+        </div>
+        <div class="button-group">
+            <button class="btn btn-primary" id="startBtn">🔴 开始监听</button>
+            <button class="btn" id="stopBtn" disabled>⏹️ 停止</button>
+            <button class="btn btn-danger" id="downloadAllBtn" disabled>📦 打包片段</button>
+        </div>
     </div>
-    <div class="list" id="recordList"></div>
-    <div class="small-text">
-        ✅ 说话自动分段（静音1秒切割）<br>
-        ✅ 每段独立保存，可重命名、下载<br>
-        ✅ 所有数据本地存储，不会上传
+
+    <div class="recordings-section">
+        <div class="section-title">
+            <span>📁 自动分段记录</span>
+            <span class="file-info" id="countBadge">0 段</span>
+        </div>
+        <div class="recordings-list" id="recordingsList">
+            <div style="text-align:center; color:#5b6e8c; padding:2rem;">✨ 开始监听后，说话会自动生成片段</div>
+        </div>
+    </div>
+    <div class="footer-note">
+        ✅ 纯本地运行 · 不上传 · 静音1秒切句<br>
+        🧠 每段可重命名、单次下载。所有片段保留至页面关闭前
     </div>
 </div>
 
 <script>
-    // ======================== VAD 自动断句核心 ========================
+    // ---------- DOM 元素 ----------
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const statusSpan = document.getElementById('statusText');
+    const micLed = document.getElementById('micLed');
+    const recordingsDiv = document.getElementById('recordingsList');
+    const countBadge = document.getElementById('countBadge');
+
+    // ---------- 全局变量 ----------
     let mediaStream = null;
     let audioContext = null;
     let sourceNode = null;
     let processorNode = null;
     let mediaRecorder = null;
-    let isSentenceRecording = false;
-    let sentenceChunks = [];
+    let isSentenceActive = false;       // 是否正在录制当前句子
+    let sentenceChunks = [];            // 当前句子的数据块
     let sentenceStartTime = 0;
     let silenceTimer = null;
-    let sentencesList = [];       // 存储 { blob, name }
+    let sentences = [];                 // 存储 { blob, name }
     let isListening = false;
+    let currentVolume = 0;
 
-    const statusDiv = document.getElementById('statusMsg');
-    const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const downloadAllBtn = document.getElementById('downloadAllBtn');
-    const recordListDiv = document.getElementById('recordList');
+    // 参数
+    const SILENCE_MS = 1000;           // 1秒静音切句
+    const MIN_SENTENCE_MS = 400;       // 最短句子时长(ms)
+    const VOLUME_THRESHOLD = 0.012;    // 音量阈值，可微调
 
-    const SILENCE_MS = 1000;        // 1秒静音切句
-    const MIN_SENTENCE_MS = 500;     // 最短句子500ms，过滤爆音
-
-    async function getMicrophone() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaStream = stream;
-            statusDiv.innerHTML = "🎤 麦克风已授权，点击「开始监听」启动语音检测";
-            startBtn.disabled = false;
-        } catch (err) {
-            statusDiv.innerHTML = "❌ 无法获取麦克风: " + err.message;
-            console.error(err);
-            alert("无法获取麦克风权限。请确保你通过 HTTP 服务器访问本页面（不是 file:// 协议）");
+    // ---------- UI 更新工具 ----------
+    function updateUI() {
+        countBadge.innerText = sentences.length + ' 段';
+        if (sentences.length === 0) {
+            downloadAllBtn.disabled = true;
+        } else {
+            downloadAllBtn.disabled = false;
+        }
+        if (isListening) {
+            micLed.className = 'led listening';
+        } else {
+            micLed.className = 'led';
         }
     }
 
-    function startSentence() {
-        if (isSentenceRecording) return;
-        isSentenceRecording = true;
+    // 添加一个片段到列表
+    function addSegmentToList(index) {
+        const item = sentences[index];
+        const url = URL.createObjectURL(item.blob);
+        const div = document.createElement('div');
+        div.className = 'recording-item';
+        div.innerHTML = `
+            <span class="file-info">${item.name}</span>
+            <audio controls src="${url}"></audio>
+            <div class="action-buttons">
+                <button class="small-btn rename" data-idx="${index}">✏️ 重命名</button>
+                <a class="small-btn download" href="${url}" download="${item.name}" style="text-decoration:none;">⬇️ 下载</a>
+            </div>
+        `;
+        recordingsDiv.appendChild(div);
+        // 重命名逻辑
+        const renameBtn = div.querySelector('.rename');
+        renameBtn.addEventListener('click', () => {
+            const newBase = prompt('输入新文件名（不要加扩展名）', item.name.replace('.webm', ''));
+            if (newBase && newBase.trim() !== '') {
+                const newName = newBase.trim() + '.webm';
+                item.name = newName;
+                div.querySelector('.file-info').innerText = newName;
+                const link = div.querySelector('.download');
+                link.download = newName;
+                // 刷新 blob url 不变，但名称已改
+            }
+        });
+        // 释放原始url（audio标签会保留blob引用，但没关系）
+        URL.revokeObjectURL(url);
+        updateUI();
+    }
+
+    // 保存当前句子
+    function finishCurrentSentence() {
+        if (!isSentenceActive) return;
+        if (sentenceChunks.length === 0) {
+            isSentenceActive = false;
+            return;
+        }
+        const duration = Date.now() - sentenceStartTime;
+        if (duration < MIN_SENTENCE_MS) {
+            // 太短，丢弃
+            sentenceChunks = [];
+            isSentenceActive = false;
+            if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+            statusSpan.innerText = '🔵 监听中（过滤短音）';
+            return;
+        }
+        // 生成音频 blob
+        const blob = new Blob(sentenceChunks, { type: 'audio/webm' });
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const name = `seg_${timestamp}.webm`;
+        sentences.push({ blob, name });
+        addSegmentToList(sentences.length - 1);
+        sentenceChunks = [];
+        isSentenceActive = false;
+        statusSpan.innerText = '🔵 监听中（已切段）';
+    }
+
+    // 开始录制新句子
+    function beginNewSentence() {
+        if (isSentenceActive) return;
+        if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
         sentenceChunks = [];
         sentenceStartTime = Date.now();
-        // 创建新的 MediaRecorder，只记录当前句子
-        if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
         mediaRecorder = new MediaRecorder(mediaStream);
         mediaRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) sentenceChunks.push(e.data);
         };
         mediaRecorder.onstop = () => {
-            if (sentenceChunks.length === 0) return;
-            const duration = Date.now() - sentenceStartTime;
-            if (duration < MIN_SENTENCE_MS) return;   // 太短的杂音不保存
-            const blob = new Blob(sentenceChunks, { type: 'audio/webm' });
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-            const name = `segment_${timestamp}.webm`;
-            sentencesList.push({ blob, name });
-            addToList(sentencesList.length - 1);
-            sentenceChunks = [];
+            // 句子结束时由 finishCurrentSentence 触发
         };
         mediaRecorder.start();
-        statusDiv.innerHTML = "🗣️ 检测到说话，正在录制...";
+        isSentenceActive = true;
+        statusSpan.innerText = '🗣️ 说话中 · 录音中';
     }
 
-    function stopSentence() {
-        if (!isSentenceRecording) return;
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
-        }
-        isSentenceRecording = false;
-        statusDiv.innerHTML = "🔵 监听中… 静音超过1秒自动切段";
-    }
-
-    function addToList(index) {
-        const item = sentencesList[index];
-        const url = URL.createObjectURL(item.blob);
-        const div = document.createElement('div');
-        div.className = 'item';
-        div.innerHTML = `
-            <span style="font-family:monospace; font-size:0.8rem;">${item.name}</span>
-            <audio controls src="${url}"></audio>
-            <button class="renameBtn" data-name="${item.name}">✏️ 重命名</button>
-            <a class="download" href="${url}" download="${item.name}">⬇️ 下载</a>
-        `;
-        recordListDiv.appendChild(div);
-        // 重命名逻辑
-        const renameBtn = div.querySelector('.renameBtn');
-        renameBtn.addEventListener('click', () => {
-            const newName = prompt('输入新文件名（不用加扩展名）', item.name.replace('.webm',''));
-            if (newName && newName.trim() !== '') {
-                const finalName = newName.trim() + '.webm';
-                item.name = finalName;
-                div.querySelector('span').innerText = finalName;
-                const link = div.querySelector('.download');
-                link.download = finalName;
-                link.href = URL.createObjectURL(item.blob);  // 刷新链接
-            }
-        });
-        URL.revokeObjectURL(url);
-        downloadAllBtn.disabled = false;
-    }
-
+    // 音量和VAD处理
     function startVAD() {
         if (!mediaStream) return;
         if (audioContext) audioContext.close();
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         sourceNode = audioContext.createMediaStreamSource(mediaStream);
         processorNode = audioContext.createScriptProcessor(2048, 1, 1);
-        let avgVolume = 0;
-        processorNode.onaudioprocess = (event) => {
-            const input = event.inputBuffer.getChannelData(0);
+        let avgVol = 0;
+        let prevSpeaking = false;
+
+        processorNode.onaudioprocess = (e) => {
+            const input = e.inputBuffer.getChannelData(0);
             let sum = 0;
             for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
             let rms = Math.sqrt(sum / input.length);
-            avgVolume = avgVolume * 0.9 + rms * 0.1;
-            const threshold = 0.012;  // 音量阈值，可微调
-            const isCurrentlySpeaking = avgVolume > threshold;
-            if (isCurrentlySpeaking && !isSentenceRecording) {
+            avgVol = avgVol * 0.85 + rms * 0.15;
+            const speakingNow = avgVol > VOLUME_THRESHOLD;
+
+            if (speakingNow && !prevSpeaking) {
+                // 刚变为说话
                 if (silenceTimer) clearTimeout(silenceTimer);
-                startSentence();
-            } else if (!isCurrentlySpeaking && isSentenceRecording) {
+                if (!isSentenceActive) beginNewSentence();
+            } else if (!speakingNow && prevSpeaking) {
+                // 刚变为静音
                 if (silenceTimer) clearTimeout(silenceTimer);
                 silenceTimer = setTimeout(() => {
-                    if (isSentenceRecording) stopSentence();
+                    if (isSentenceActive) finishCurrentSentence();
                 }, SILENCE_MS);
             }
+            prevSpeaking = speakingNow;
         };
         sourceNode.connect(processorNode);
         processorNode.connect(audioContext.destination);
         audioContext.resume();
-        statusDiv.innerHTML = "🔵 监听中… 说话自动分段（静音1秒分割）";
+        statusSpan.innerText = '🔵 监听中 · 说话自动分段';
         isListening = true;
-        startBtn.disabled = true;
-        stopBtn.disabled = false;
+        updateUI();
     }
 
-    function stopAll() {
+    // 停止整个录音系统
+    function stopEverything() {
         if (silenceTimer) clearTimeout(silenceTimer);
-        if (isSentenceRecording) stopSentence();
+        if (isSentenceActive) finishCurrentSentence();
+        if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
         if (processorNode) processorNode.disconnect();
         if (sourceNode) sourceNode.disconnect();
         if (audioContext) audioContext.close();
         if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
         isListening = false;
-        statusDiv.innerHTML = "⏹️ 监听已停止，" + sentencesList.length + " 个片段已保存";
+        statusSpan.innerText = '⏹️ 已停止，片段已保留';
+        updateUI();
         startBtn.disabled = false;
         stopBtn.disabled = true;
-        downloadAllBtn.disabled = false;
     }
 
+    // 初始化麦克风
+    async function initMicrophone() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaStream = stream;
+            statusSpan.innerText = '🎤 麦克风已就绪，点击「开始监听」';
+            updateUI();
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+        } catch (err) {
+            statusSpan.innerText = '❌ 麦克风授权失败: ' + err.message;
+            console.error(err);
+            alert('无法获取麦克风，请确保页面通过 HTTP 服务器(http://localhost)访问，并授予权限');
+        }
+    }
+
+    // 监听开始
+    function startListening() {
+        if (!mediaStream) {
+            initMicrophone().then(() => {
+                if (mediaStream) startVAD();
+            });
+        } else {
+            startVAD();
+        }
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+    }
+
+    // 打包下载（提示逐个保存）
     function downloadAll() {
-        if (sentencesList.length === 0) {
-            alert("没有录音片段");
+        if (sentences.length === 0) {
+            alert('没有录音片段');
             return;
         }
-        // 简单逐个触发保存（浏览器限制无法一键ZIP，改为提示用户）
-        alert(`共 ${sentencesList.length} 个片段，请分别点击每个片段旁边的「下载」按钮保存。`);
-        // 也可以自动下载第一个，以免用户不知
-        const firstLink = recordListDiv.querySelector('.download');
+        alert(`共 ${sentences.length} 个片段，您可以右键另存或点击每个片段旁的下载按钮保存。`);
+        // 自动下载第一个作为引导
+        const firstLink = recordingsDiv.querySelector('.download');
         if (firstLink) firstLink.click();
     }
 
-    startBtn.onclick = () => {
-        if (!mediaStream) {
-            getMicrophone();
-            return;
-        }
-        startVAD();
-    };
-    stopBtn.onclick = stopAll;
+    // 绑定事件
+    startBtn.onclick = startListening;
+    stopBtn.onclick = stopEverything;
     downloadAllBtn.onclick = downloadAll;
 
-    // 页面加载先请求麦克风权限
-    getMicrophone();
-</script>
-</body>
-</html>    let vadRecorder = null;
-    let allChunks = [];      // 存储 { blob, name }
-    let isListening = false;
-
-    const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const statusDiv = document.getElementById('statusMsg');
-    const recordingsDiv = document.getElementById('recordingsList');
-    const downloadAllBtn = document.getElementById('downloadAllBtn');
-
-    function updateUI(active) {
-        startBtn.disabled = active;
-        stopBtn.disabled = !active;
-        downloadAllBtn.disabled = !allChunks.length;
-        statusDiv.innerHTML = active ? "🔵 监听中…… 你一开口，就自动生成新片段" : "⚪ 已停止，下方可以下载所有片段";
-    }
-
-    async function startAutoRecorder() {
-        if (vadRecorder) return;
-        try {
-            statusDiv.innerHTML = "🎤 正在请求麦克风权限……";
-            vadRecorder = await audioRecorder({
-                device: 'microphone',
-                vadEnabled: true,           // 🔥 开启VAD（自动断句）
-                recordWhenVadStop: true,    // 说话自动开始，停顿时自动结束
-                sampleRate: 16000,
-                onSegmentStart: () => {      // 句子开始时
-                    statusDiv.innerHTML = "🗣️ 检测到说话，开始录制当前片段……";
-                },
-                onSegment: async (blob) => { // 句子结束时自动回调
-                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-                    const filename = `rec_${timestamp}.webm`;
-                    allChunks.push({ blob, name: filename });
-                    
-                    // 显示到列表
-                    const url = URL.createObjectURL(blob);
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'record-item';
-                    itemDiv.innerHTML = `
-                        <span class="badge">片段 ${allChunks.length}</span>
-                        <audio controls src="${url}"></audio>
-                        <button data-name="${filename}" class="renameBtn">✏️ 重命名</button>
-                        <a href="${url}" download="${filename}" style="margin-left:10px;">⬇️ 单点下载</a>
-                    `;
-                    recordingsDiv.appendChild(itemDiv);
-                    // 滚动到底部
-                    recordingsDiv.scrollTop = recordingsDiv.scrollHeight;
-                    // 重命名按钮逻辑（简单demo）
-                    itemDiv.querySelector('.renameBtn').addEventListener('click', (e) => {
-                        const newName = prompt('输入新名字（不用加扩展名）', filename.replace('.webm',''));
-                        if(newName && newName.trim() !== '') {
-                            const finalName = newName.trim() + '.webm';
-                            const aLink = itemDiv.querySelector('a');
-                            aLink.download = finalName;
-                            aLink.innerText = '⬇️ 重下';
-                            aLink.href = URL.createObjectURL(blob); // 重新生成
-                            itemDiv.querySelector('.badge').innerText = `📄 ${finalName}`;
-                            // 更新 allChunks 中的 name
-                            const index = allChunks.findIndex(ch => ch.name === filename);
-                            if(index !== -1) allChunks[index].name = finalName;
-                        }
-                    });
-                    URL.revokeObjectURL(url);
-                    updateUI(true);
-                }
-            });
-            await vadRecorder.init();
-            vadRecorder.start();
-            isListening = true;
-            updateUI(true);
-            statusDiv.innerHTML = "🔵 监听中…… 你一开口，就自动生成新片段";
-        } catch (err) {
-            console.error(err);
-            statusDiv.innerHTML = "❌ 初始化失败: " + err.message;
-            alert("无法获取麦克风，请检查浏览器权限。");
-        }
-    }
-
-    async function stopAutoRecorder() {
-        if (vadRecorder) {
-            vadRecorder.stop();
-            vadRecorder = null;
-        }
-        isListening = false;
-        updateUI(false);
-        statusDiv.innerHTML = "✅ 已停止录音，片段已保存，可以下载全部";
-    }
-
-    function downloadAll() {
-        if (!allChunks.length) return;
-        // 简单 zip：浏览器环境无法直接压缩，我们提供批量建议 —— 逐个弹出保存 (或者提示zip稍麻烦)
-        // 优雅一点: 提示用“单点下载”, 但代码里做一个批量保存第一个演示
-        alert(`一共 ${allChunks.length} 个片段，已全部显示在上方，可以分别点击「单点下载」或者点击右边⬇️。\n需要打包成zip的话，暂时可以用浏览器插件，或者后续手动批量。`);
-        // 为了体验，把前两个做示范自动保存
-        allChunks.forEach((ch, idx) => {
-            if(idx < 2) {
-                const url = URL.createObjectURL(ch.blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = ch.name;
-                a.click();
-                URL.revokeObjectURL(url);
-            }
-        });
-        if(allChunks.length > 2) alert(`已批量保存前2个，剩余${allChunks.length-2}个可以手动。`);
-    }
-
-    startBtn.addEventListener('click', startAutoRecorder);
-    stopBtn.addEventListener('click', stopAutoRecorder);
-    downloadAllBtn.addEventListener('click', downloadAll);
+    // 页面加载请求麦克风（不启动检测，只授权）
+    initMicrophone();
 </script>
 </body>
 </html>

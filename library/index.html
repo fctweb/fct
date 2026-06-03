@@ -1,1 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>圖書館進館統計</title>
+  <style>
+    :root {
+      --bg1: #edf4ff;
+      --bg2: #f8fbff;
+      --card: rgba(255, 255, 255, 0.88);
+      --text: #1e293b;
+      --muted: #64748b;
+      --primary: #2563eb;
+      --primary2: #1d4ed8;
+      --success: #16a34a;
+      --shadow: 0 22px 60px rgba(37, 99, 235, 0.18);
+      --radius: 28px;
+    }
 
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.18), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.16), transparent 32%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+    }
+
+    .app {
+      width: min(1160px, 100%);
+      background: var(--card);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 32px 34px 18px;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.1);
+      color: var(--primary2);
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 6vw, 62px);
+      letter-spacing: 2px;
+      line-height: 1.08;
+    }
+
+    .subtitle {
+      margin: 14px 0 0;
+      font-size: clamp(16px, 2vw, 22px);
+      color: var(--muted);
+    }
+
+    .main {
+      padding: 20px 34px 38px;
+    }
+
+    .grade-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      align-items: stretch;
+    }
+
+    .grade-group {
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 28px;
+      padding: 20px;
+      box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
+    }
+
+    .group-title {
+      margin: 0 0 16px;
+      text-align: center;
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: #0f172a;
+    }
+
+    .button-column {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    .grade-btn {
+      border: none;
+      min-height: 135px;
+      border-radius: 26px;
+      color: white;
+      cursor: pointer;
+      font-size: clamp(36px, 5vw, 58px);
+      font-weight: 900;
+      letter-spacing: 5px;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .grade-btn:hover {
+      transform: translateY(-4px);
+      filter: brightness(1.05);
+    }
+
+    .grade-btn:active {
+      transform: scale(0.97);
+    }
+
+    .junior .grade-btn:nth-child(1) {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      box-shadow: 0 16px 34px rgba(37, 99, 235, 0.26);
+    }
+
+    .junior .grade-btn:nth-child(2) {
+      background: linear-gradient(135deg, #0891b2, #0e7490);
+      box-shadow: 0 16px 34px rgba(8, 145, 178, 0.25);
+    }
+
+    .junior .grade-btn:nth-child(3) {
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      box-shadow: 0 16px 34px rgba(124, 58, 237, 0.25);
+    }
+
+    .senior .grade-btn:nth-child(1) {
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      box-shadow: 0 16px 34px rgba(249, 115, 22, 0.25);
+    }
+
+    .senior .grade-btn:nth-child(2) {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      box-shadow: 0 16px 34px rgba(22, 163, 74, 0.25);
+    }
+
+    .senior .grade-btn:nth-child(3) {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      box-shadow: 0 16px 34px rgba(220, 38, 38, 0.25);
+    }
+
+    .footer {
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 15px;
+      flex-wrap: wrap;
+    }
+
+    .count-box {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.05);
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-weight: 700;
+    }
+
+    .reset-btn {
+      border: none;
+      border-radius: 14px;
+      padding: 10px 14px;
+      cursor: pointer;
+      background: rgba(239, 68, 68, 0.1);
+      color: #b91c1c;
+      font-weight: 800;
+    }
+
+    .toast-layer {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.32);
+      backdrop-filter: blur(6px);
+      z-index: 20;
+      padding: 20px;
+    }
+
+    .toast-layer.show {
+      display: flex;
+    }
+
+    .toast {
+      width: min(520px, 100%);
+      background: white;
+      border-radius: 30px;
+      padding: 42px 30px;
+      text-align: center;
+      box-shadow: 0 30px 80px rgba(15, 23, 42, 0.28);
+      animation: pop 0.18s ease-out;
+    }
+
+    @keyframes pop {
+      from { transform: scale(0.92); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .check {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      margin: 0 auto 18px;
+      background: var(--success);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-size: 54px;
+      font-weight: 900;
+    }
+
+    .toast h2 {
+      margin: 0;
+      font-size: 42px;
+    }
+
+    .toast p {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 20px;
+    }
+
+    iframe[name="hiddenSubmitFrame"] {
+      display: none;
+    }
+
+    @media (max-width: 760px) {
+      body { padding: 12px; }
+      .header { padding: 28px 18px 14px; }
+      .main { padding: 16px 18px 26px; }
+      .grade-layout { gap: 14px; }
+      .grade-group { padding: 14px; border-radius: 22px; }
+      .button-column { gap: 12px; }
+      .grade-btn {
+        min-height: 112px;
+        border-radius: 20px;
+        letter-spacing: 3px;
+      }
+      .footer { justify-content: center; text-align: center; }
+    }
+
+    @media (max-width: 480px) {
+      .grade-layout {
+        grid-template-columns: 1fr;
+      }
+      .grade-btn {
+        min-height: 96px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="header">
+      <div class="badge">📚 圖書館入館記錄</div>
+      <h1>圖書館進館統計</h1>
+      <p class="subtitle">左邊初中，右邊高中；點一下即自動提交</p>
+    </section>
+
+    <section class="main">
+      <div class="grade-layout">
+        <div class="grade-group junior">
+          <h2 class="group-title">初中</h2>
+          <div class="button-column">
+            <button class="grade-btn" type="button" onclick="submitGrade('初一')">初一</button>
+            <button class="grade-btn" type="button" onclick="submitGrade('初二')">初二</button>
+            <button class="grade-btn" type="button" onclick="submitGrade('初三')">初三</button>
+          </div>
+        </div>
+
+        <div class="grade-group senior">
+          <h2 class="group-title">高中</h2>
+          <div class="button-column">
+            <button class="grade-btn" type="button" onclick="submitGrade('高一')">高一</button>
+            <button class="grade-btn" type="button" onclick="submitGrade('高二')">高二</button>
+            <button class="grade-btn" type="button" onclick="submitGrade('高三')">高三</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="count-box">本機今日已點擊：<span id="localCount">0</span> 次</div>
+        <div>提交後會自動返回主畫面，不需要再按 Google 表單提交。</div>
+        <button class="reset-btn" type="button" onclick="resetLocalCount()">重置本機計數</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast-layer" id="toastLayer">
+    <div class="toast">
+      <div class="check">✓</div>
+      <h2>提交成功</h2>
+      <p><span id="submittedGrade">年級</span> 已記錄，正在返回主頁面...</p>
+    </div>
+  </div>
+
+  <iframe name="hiddenSubmitFrame" title="hidden submit frame"></iframe>
+
+  <script>
+    const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLScPUl_1_o3XPVEPljqI9fhOFXknc3nK9puWNWGzosvfVPs84g/formResponse";
+    const ENTRY_NAME = "entry.842011085";
+
+    const toastLayer = document.getElementById("toastLayer");
+    const submittedGrade = document.getElementById("submittedGrade");
+    const localCount = document.getElementById("localCount");
+
+    let locked = false;
+
+    function getTodayKey() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      return `library_count_${y}-${m}-${d}`;
+    }
+
+    function loadLocalCount() {
+      localCount.textContent = localStorage.getItem(getTodayKey()) || "0";
+    }
+
+    function addLocalCount() {
+      const key = getTodayKey();
+      const next = Number(localStorage.getItem(key) || "0") + 1;
+      localStorage.setItem(key, String(next));
+      localCount.textContent = String(next);
+    }
+
+    function resetLocalCount() {
+      localStorage.setItem(getTodayKey(), "0");
+      loadLocalCount();
+    }
+
+    function submitGrade(grade) {
+      if (locked) return;
+      locked = true;
+
+      const form = document.createElement("form");
+      form.action = FORM_ACTION;
+      form.method = "POST";
+      form.target = "hiddenSubmitFrame";
+      form.style.display = "none";
+
+      const input = document.createElement("input");
+      input.name = ENTRY_NAME;
+      input.value = grade;
+      form.appendChild(input);
+
+      document.body.appendChild(form);
+      form.submit();
+      form.remove();
+
+      addLocalCount();
+      submittedGrade.textContent = grade;
+      toastLayer.classList.add("show");
+
+      setTimeout(() => {
+        toastLayer.classList.remove("show");
+        locked = false;
+      }, 1000);
+    }
+
+    loadLocalCount();
+  </script>
+</body>
+</html>

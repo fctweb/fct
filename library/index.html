@@ -11,7 +11,6 @@
       --card: rgba(255, 255, 255, 0.88);
       --text: #1e293b;
       --muted: #64748b;
-      --primary: #2563eb;
       --primary2: #1d4ed8;
       --success: #16a34a;
       --danger: #dc2626;
@@ -166,7 +165,7 @@
       font-size: clamp(36px, 5vw, 58px);
       font-weight: 900;
       letter-spacing: 5px;
-      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease, opacity 0.12s ease;
       position: relative;
       overflow: hidden;
     }
@@ -182,6 +181,11 @@
 
     .grade-btn.disabled {
       filter: grayscale(0.35) brightness(0.85);
+    }
+
+    .grade-btn.cooldown {
+      opacity: 0.78;
+      pointer-events: none;
     }
 
     .junior .grade-btn:nth-child(1) {
@@ -262,6 +266,7 @@
       backdrop-filter: blur(6px);
       z-index: 20;
       padding: 20px;
+      pointer-events: none;
     }
 
     .toast-layer.show {
@@ -303,6 +308,11 @@
       background: var(--danger);
     }
 
+    .toast-icon.loading {
+      background: #2563eb;
+      font-size: 42px;
+    }
+
     .toast h2 {
       margin: 0;
       font-size: 42px;
@@ -314,7 +324,7 @@
       font-size: 20px;
     }
 
-    iframe[name="hiddenSubmitFrame"] {
+    .hidden-submit-frame {
       display: none;
     }
 
@@ -391,7 +401,7 @@
       </div>
 
       <div class="footer">
-        <div class="footer-text">右上角會自動檢測網絡；網絡錯誤時不會提交。</div>
+        <div class="footer-text">右上角會自動檢測網絡；每次提交會阻擋 0.5 秒，避免連點漏記。</div>
         <button class="fullscreen-btn" id="fullscreenBtn" type="button" onclick="toggleFullscreen()">點我全屏</button>
       </div>
     </section>
@@ -405,8 +415,6 @@
     </div>
   </div>
 
-  <iframe name="hiddenSubmitFrame" title="hidden submit frame"></iframe>
-
   <script>
     const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLScPUl_1_o3XPVEPljqI9fhOFXknc3nK9puWNWGzosvfVPs84g/formResponse";
     const ENTRY_NAME = "entry.842011085";
@@ -415,29 +423,53 @@
     const PING_INTERVAL = 2000;
     const PING_TIMEOUT = 3000;
 
+    // 每次點擊後阻擋 0.5 秒
+    const CLICK_COOLDOWN = 500;
+
+    // 提交超過 8 秒未返回，就提示網絡可能失敗
+    const SUBMIT_TIMEOUT = 8000;
+
     const toastLayer = document.getElementById("toastLayer");
     const toastIcon = document.getElementById("toastIcon");
     const toastTitle = document.getElementById("toastTitle");
     const toastMessage = document.getElementById("toastMessage");
-    const submittedGrade = document.getElementById("submittedGrade");
     const fullscreenBtn = document.getElementById("fullscreenBtn");
     const networkStatus = document.getElementById("networkStatus");
     const networkText = document.getElementById("networkText");
 
     let locked = false;
     let networkOK = false;
-    let lastPingMs = null;
+    let toastTimer = null;
 
     function showToast(type, title, message, ms = 500) {
-      toastIcon.className = "toast-icon " + (type === "error" ? "error" : "success");
-      toastIcon.textContent = type === "error" ? "!" : "✓";
+      clearTimeout(toastTimer);
+
+      toastIcon.className = "toast-icon " + type;
+      toastIcon.textContent = type === "error" ? "!" : (type === "loading" ? "…" : "✓");
       toastTitle.textContent = title;
       toastMessage.innerHTML = message;
       toastLayer.classList.add("show");
 
-      setTimeout(() => {
-        toastLayer.classList.remove("show");
-      }, ms);
+      if (ms > 0) {
+        toastTimer = setTimeout(() => {
+          toastLayer.classList.remove("show");
+        }, ms);
+      }
+    }
+
+    function hideToast() {
+      clearTimeout(toastTimer);
+      toastLayer.classList.remove("show");
+    }
+
+    function setButtonsCooldown(isCooldown) {
+      document.querySelectorAll(".grade-btn").forEach((btn) => {
+        if (isCooldown) {
+          btn.classList.add("cooldown");
+        } else {
+          btn.classList.remove("cooldown");
+        }
+      });
     }
 
     function setNetworkStatus(status, text) {
@@ -455,13 +487,11 @@
     }
 
     function getPingUrl() {
-      // 如果已經放到 GitHub Pages，就 ping 當前頁面，最準。
       if (location.protocol === "http:" || location.protocol === "https:") {
         const base = location.origin + location.pathname;
         return base + "?ping=" + Date.now();
       }
 
-      // 如果是在本機直接打開 HTML，就用 GitHub 的小圖標測試網絡。
       return "https://github.githubassets.com/favicons/favicon.png?ping=" + Date.now();
     }
 
@@ -478,25 +508,26 @@
       })
       .then(() => {
         clearTimeout(timer);
-        lastPingMs = Math.round(performance.now() - start);
+        const pingMs = Math.round(performance.now() - start);
         networkOK = true;
 
-        if (lastPingMs <= 800) {
-          setNetworkStatus("good", "網絡良好 " + lastPingMs + "ms");
+        if (pingMs <= 800) {
+          setNetworkStatus("good", "網絡良好 " + pingMs + "ms");
         } else {
-          setNetworkStatus("slow", "網絡較慢 " + lastPingMs + "ms");
+          setNetworkStatus("slow", "網絡較慢 " + pingMs + "ms");
         }
       })
       .catch(() => {
         clearTimeout(timer);
-        lastPingMs = null;
         networkOK = false;
         setNetworkStatus("bad", "連接失敗 / 超時");
       });
     }
 
     function submitGrade(grade) {
-      if (locked) return;
+      if (locked) {
+        return;
+      }
 
       if (!networkOK) {
         showToast("error", "提交失敗", "網絡錯誤，請檢查連接後再試。", 1200);
@@ -504,11 +535,55 @@
       }
 
       locked = true;
+      setButtonsCooldown(true);
+
+      setTimeout(() => {
+        locked = false;
+        setButtonsCooldown(false);
+      }, CLICK_COOLDOWN);
+
+      showToast("loading", "正在提交", "<span>" + grade + "</span> 正在寫入 Google 表單...", 0);
+
+      // 重要：每一次提交都建立獨立 iframe + form。
+      // 不共用 iframe，避免下一次提交取消上一次還沒完成的請求。
+      const submitId = "submitFrame_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+
+      const iframe = document.createElement("iframe");
+      iframe.name = submitId;
+      iframe.className = "hidden-submit-frame";
+      iframe.title = "hidden submit frame";
+
+      let hasSubmitted = false;
+      let done = false;
+
+      const cleanup = () => {
+        setTimeout(() => {
+          iframe.remove();
+        }, 3000);
+      };
+
+      const timeout = setTimeout(() => {
+        if (done) return;
+        done = true;
+        showToast("error", "提交失敗", "Google 表單回應超時，請檢查網絡後再試。", 1500);
+        cleanup();
+      }, SUBMIT_TIMEOUT);
+
+      iframe.onload = () => {
+        if (!hasSubmitted || done) return;
+
+        done = true;
+        clearTimeout(timeout);
+        showToast("success", "提交成功", "<span>" + grade + "</span> 已記錄，正在返回主頁面...", 500);
+        cleanup();
+      };
+
+      document.body.appendChild(iframe);
 
       const form = document.createElement("form");
       form.action = FORM_ACTION;
       form.method = "POST";
-      form.target = "hiddenSubmitFrame";
+      form.target = submitId;
       form.style.display = "none";
 
       const input = document.createElement("input");
@@ -517,15 +592,14 @@
       form.appendChild(input);
 
       document.body.appendChild(form);
+
+      hasSubmitted = true;
       form.submit();
-      form.remove();
 
-      submittedGrade.textContent = grade;
-      showToast("success", "提交成功", "<span>" + grade + "</span> 已記錄，正在返回主頁面...", 500);
-
+      // 不要馬上刪 form，等瀏覽器確實送出後再清理。
       setTimeout(() => {
-        locked = false;
-      }, 500);
+        form.remove();
+      }, 3000);
     }
 
     function getFullscreenElement() {

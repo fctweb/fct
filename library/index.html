@@ -179,13 +179,15 @@
       transform: scale(0.97);
     }
 
-    .grade-btn.disabled {
-      filter: grayscale(0.35) brightness(0.85);
+    .grade-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.72;
+      transform: none !important;
+      filter: grayscale(0.25) brightness(0.9);
     }
 
-    .grade-btn.cooldown {
-      opacity: 0.78;
-      pointer-events: none;
+    .grade-btn.disabled {
+      filter: grayscale(0.35) brightness(0.85);
     }
 
     .junior .grade-btn:nth-child(1) {
@@ -233,6 +235,10 @@
       font-weight: 700;
     }
 
+    .queue-status {
+      display: none;
+    }
+
     .fullscreen-btn {
       border: none;
       border-radius: 18px;
@@ -266,7 +272,7 @@
       backdrop-filter: blur(6px);
       z-index: 20;
       padding: 20px;
-      pointer-events: none;
+      pointer-events: auto;
     }
 
     .toast-layer.show {
@@ -289,8 +295,8 @@
     }
 
     .toast-icon {
-      width: 90px;
-      height: 90px;
+      width: 96px;
+      height: 96px;
       border-radius: 50%;
       margin: 0 auto 18px;
       color: white;
@@ -301,16 +307,48 @@
     }
 
     .toast-icon.success {
-      background: var(--success);
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      box-shadow: 0 14px 32px rgba(22, 163, 74, 0.28);
+      animation: successPop 0.24s ease-out;
     }
 
     .toast-icon.error {
-      background: var(--danger);
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      box-shadow: 0 14px 32px rgba(220, 38, 38, 0.26);
+      animation: successPop 0.24s ease-out;
     }
 
     .toast-icon.loading {
-      background: #2563eb;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      box-shadow: 0 14px 32px rgba(37, 99, 235, 0.24);
       font-size: 42px;
+    }
+
+    @keyframes successPop {
+      0% { transform: scale(0.72); opacity: 0; }
+      70% { transform: scale(1.08); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .check-svg {
+      width: 58px;
+      height: 58px;
+      display: block;
+    }
+
+    .check-svg path {
+      fill: none;
+      stroke: white;
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 60;
+      stroke-dashoffset: 60;
+      animation: drawCheck 0.28s ease-out 0.12s forwards;
+    }
+
+    @keyframes drawCheck {
+      to { stroke-dashoffset: 0; }
     }
 
     .toast h2 {
@@ -401,7 +439,7 @@
       </div>
 
       <div class="footer">
-        <div class="footer-text">右上角會自動檢測網絡；每次提交會阻擋 0.5 秒，避免連點漏記。</div>
+        <div class="footer-text">點選年級後會自動提交，成功提示顯示 0.5 秒後返回主畫面。</div>
         <button class="fullscreen-btn" id="fullscreenBtn" type="button" onclick="toggleFullscreen()">點我全屏</button>
       </div>
     </section>
@@ -409,7 +447,7 @@
 
   <div class="toast-layer" id="toastLayer">
     <div class="toast">
-      <div class="toast-icon success" id="toastIcon">✓</div>
+      <div class="toast-icon success" id="toastIcon"></div>
       <h2 id="toastTitle">提交成功</h2>
       <p id="toastMessage"><span id="submittedGrade">年級</span> 已記錄，正在返回主頁面...</p>
     </div>
@@ -423,11 +461,12 @@
     const PING_INTERVAL = 2000;
     const PING_TIMEOUT = 3000;
 
-    // 每次點擊後阻擋 0.5 秒
-    const CLICK_COOLDOWN = 500;
+    // 勾勾顯示 0.5 秒；這 0.5 秒內不能按任何年級
+    const SUCCESS_SHOW_TIME = 500;
 
-    // 提交超過 8 秒未返回，就提示網絡可能失敗
+    // 後台提交超過 8 秒未返回，就重試
     const SUBMIT_TIMEOUT = 8000;
+    const MAX_RETRY = 3;
 
     const toastLayer = document.getElementById("toastLayer");
     const toastIcon = document.getElementById("toastIcon");
@@ -437,15 +476,44 @@
     const networkStatus = document.getElementById("networkStatus");
     const networkText = document.getElementById("networkText");
 
-    let locked = false;
+    let busy = false;
     let networkOK = false;
     let toastTimer = null;
 
-    function showToast(type, title, message, ms = 500) {
+    // 提交隊列：用來避免短時間多次點擊時漏記。
+    let submitQueue = [];
+    let isProcessingQueue = false;
+    let sentCount = 0;
+    let failedCount = 0;
+
+    function setAllGradeButtonsDisabled(disabled) {
+      document.querySelectorAll(".grade-btn").forEach((btn) => {
+        btn.disabled = disabled;
+      });
+    }
+
+    function setBusy(value) {
+      busy = value;
+      setAllGradeButtonsDisabled(value);
+    }
+
+    function showToast(type, title, message, ms = 500, afterHide = null) {
       clearTimeout(toastTimer);
 
       toastIcon.className = "toast-icon " + type;
-      toastIcon.textContent = type === "error" ? "!" : (type === "loading" ? "…" : "✓");
+
+      if (type === "success") {
+        toastIcon.innerHTML = `
+          <svg class="check-svg" viewBox="0 0 64 64" aria-hidden="true">
+            <path d="M18 33.5 L27.5 43 L47 21"></path>
+          </svg>
+        `;
+      } else if (type === "error") {
+        toastIcon.textContent = "!";
+      } else {
+        toastIcon.textContent = "…";
+      }
+
       toastTitle.textContent = title;
       toastMessage.innerHTML = message;
       toastLayer.classList.add("show");
@@ -453,31 +521,20 @@
       if (ms > 0) {
         toastTimer = setTimeout(() => {
           toastLayer.classList.remove("show");
+          if (typeof afterHide === "function") afterHide();
         }, ms);
       }
     }
 
-    function hideToast() {
-      clearTimeout(toastTimer);
-      toastLayer.classList.remove("show");
-    }
-
-    function setButtonsCooldown(isCooldown) {
-      document.querySelectorAll(".grade-btn").forEach((btn) => {
-        if (isCooldown) {
-          btn.classList.add("cooldown");
-        } else {
-          btn.classList.remove("cooldown");
-        }
-      });
+    function updateQueueStatus() {
+      // 不在前台顯示隊列文字，避免老師或使用者看到技術提示。
     }
 
     function setNetworkStatus(status, text) {
       networkStatus.className = "network-status " + status;
       networkText.textContent = text;
 
-      const buttons = document.querySelectorAll(".grade-btn");
-      buttons.forEach((btn) => {
+      document.querySelectorAll(".grade-btn").forEach((btn) => {
         if (status === "bad") {
           btn.classList.add("disabled");
         } else {
@@ -525,81 +582,121 @@
     }
 
     function submitGrade(grade) {
-      if (locked) {
-        return;
-      }
+      // 勾勾顯示的 0.5 秒內不能再點
+      if (busy) return;
 
       if (!networkOK) {
         showToast("error", "提交失敗", "網絡錯誤，請檢查連接後再試。", 1200);
         return;
       }
 
-      locked = true;
-      setButtonsCooldown(true);
+      // 立即顯示成功，0.5 秒內鎖住按鈕。
+      setBusy(true);
+      showToast("success", "提交成功", "<span>" + grade + "</span> 已成功記錄。", SUCCESS_SHOW_TIME, () => {
+        setBusy(false);
+      });
 
-      setTimeout(() => {
-        locked = false;
-        setButtonsCooldown(false);
-      }, CLICK_COOLDOWN);
+      // 加入提交隊列，一條一條送到 Google 表單。
+      submitQueue.push({
+        grade: grade,
+        attempts: 0,
+        id: Date.now() + "_" + Math.random().toString(16).slice(2)
+      });
 
-      showToast("loading", "正在提交", "<span>" + grade + "</span> 正在寫入 Google 表單...", 0);
+      updateQueueStatus();
+      processQueue();
+    }
 
-      // 重要：每一次提交都建立獨立 iframe + form。
-      // 不共用 iframe，避免下一次提交取消上一次還沒完成的請求。
-      const submitId = "submitFrame_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+    function processQueue() {
+      if (isProcessingQueue) return;
+      if (submitQueue.length === 0) {
+        updateQueueStatus();
+        return;
+      }
 
-      const iframe = document.createElement("iframe");
-      iframe.name = submitId;
-      iframe.className = "hidden-submit-frame";
-      iframe.title = "hidden submit frame";
+      isProcessingQueue = true;
+      updateQueueStatus();
 
-      let hasSubmitted = false;
-      let done = false;
+      const item = submitQueue.shift();
+      sendOneQueuedItem(item)
+        .then(() => {
+          sentCount++;
+          isProcessingQueue = false;
+          updateQueueStatus();
+          processQueue();
+        })
+        .catch(() => {
+          item.attempts++;
 
-      const cleanup = () => {
-        setTimeout(() => {
-          iframe.remove();
-        }, 3000);
-      };
+          if (item.attempts < MAX_RETRY) {
+            // 失敗就放回隊列前面重試，避免漏記
+            submitQueue.unshift(item);
+          } else {
+            failedCount++;
+            showToast("error", "提交異常", "網絡不穩定，請稍後再試或檢查 Google 表單。", 1800);
+          }
 
-      const timeout = setTimeout(() => {
-        if (done) return;
-        done = true;
-        showToast("error", "提交失敗", "Google 表單回應超時，請檢查網絡後再試。", 1500);
-        cleanup();
-      }, SUBMIT_TIMEOUT);
+          isProcessingQueue = false;
+          updateQueueStatus();
 
-      iframe.onload = () => {
-        if (!hasSubmitted || done) return;
+          // 稍微等一下再繼續，避免網絡壞時瘋狂重試
+          setTimeout(processQueue, 1000);
+        });
+    }
 
-        done = true;
-        clearTimeout(timeout);
-        showToast("success", "提交成功", "<span>" + grade + "</span> 已記錄，正在返回主頁面...", 500);
-        cleanup();
-      };
+    function sendOneQueuedItem(item) {
+      return new Promise((resolve, reject) => {
+        const submitId = "submitFrame_" + item.id + "_" + item.attempts;
 
-      document.body.appendChild(iframe);
+        const iframe = document.createElement("iframe");
+        iframe.name = submitId;
+        iframe.className = "hidden-submit-frame";
+        iframe.title = "hidden submit frame";
 
-      const form = document.createElement("form");
-      form.action = FORM_ACTION;
-      form.method = "POST";
-      form.target = submitId;
-      form.style.display = "none";
+        let hasSubmitted = false;
+        let finished = false;
 
-      const input = document.createElement("input");
-      input.name = ENTRY_NAME;
-      input.value = grade;
-      form.appendChild(input);
+        function cleanup() {
+          setTimeout(() => iframe.remove(), 3000);
+        }
 
-      document.body.appendChild(form);
+        const timeout = setTimeout(() => {
+          if (finished) return;
+          finished = true;
+          cleanup();
+          reject(new Error("timeout"));
+        }, SUBMIT_TIMEOUT);
 
-      hasSubmitted = true;
-      form.submit();
+        iframe.onload = () => {
+          if (!hasSubmitted || finished) return;
 
-      // 不要馬上刪 form，等瀏覽器確實送出後再清理。
-      setTimeout(() => {
-        form.remove();
-      }, 3000);
+          finished = true;
+          clearTimeout(timeout);
+          cleanup();
+          resolve();
+        };
+
+        document.body.appendChild(iframe);
+
+        const form = document.createElement("form");
+        form.action = FORM_ACTION;
+        form.method = "POST";
+        form.target = submitId;
+        form.style.display = "none";
+
+        const input = document.createElement("input");
+        input.name = ENTRY_NAME;
+        input.value = item.grade;
+        form.appendChild(input);
+
+        document.body.appendChild(form);
+
+        hasSubmitted = true;
+        form.submit();
+
+        // 不要立刻刪除 form，避免瀏覽器還沒送完
+        setTimeout(() => form.remove(), 3000);
+      });
     }
 
     function getFullscreenElement() {

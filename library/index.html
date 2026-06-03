@@ -14,6 +14,8 @@
       --primary: #2563eb;
       --primary2: #1d4ed8;
       --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #f97316;
       --shadow: 0 22px 60px rgba(37, 99, 235, 0.18);
       --radius: 28px;
     }
@@ -36,6 +38,48 @@
       align-items: center;
       justify-content: center;
       padding: 22px;
+    }
+
+    .network-status {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+      backdrop-filter: blur(12px);
+      font-weight: 900;
+      color: #334155;
+      user-select: none;
+    }
+
+    .network-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: #94a3b8;
+      box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.16);
+    }
+
+    .network-status.good .network-dot {
+      background: var(--success);
+      box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.16);
+    }
+
+    .network-status.slow .network-dot {
+      background: var(--warning);
+      box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.16);
+    }
+
+    .network-status.bad .network-dot {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.16);
     }
 
     .app {
@@ -134,6 +178,10 @@
 
     .grade-btn:active {
       transform: scale(0.97);
+    }
+
+    .grade-btn.disabled {
+      filter: grayscale(0.35) brightness(0.85);
     }
 
     .junior .grade-btn:nth-child(1) {
@@ -235,17 +283,24 @@
       to { transform: scale(1); opacity: 1; }
     }
 
-    .check {
+    .toast-icon {
       width: 90px;
       height: 90px;
       border-radius: 50%;
       margin: 0 auto 18px;
-      background: var(--success);
       color: white;
       display: grid;
       place-items: center;
       font-size: 54px;
       font-weight: 900;
+    }
+
+    .toast-icon.success {
+      background: var(--success);
+    }
+
+    .toast-icon.error {
+      background: var(--danger);
     }
 
     .toast h2 {
@@ -265,7 +320,13 @@
 
     @media (max-width: 760px) {
       body { padding: 12px; }
-      .header { padding: 28px 18px 14px; }
+      .network-status {
+        top: 10px;
+        right: 10px;
+        font-size: 13px;
+        padding: 8px 10px;
+      }
+      .header { padding: 48px 18px 14px; }
       .main { padding: 16px 18px 26px; }
       .grade-layout { gap: 14px; }
       .grade-group { padding: 14px; border-radius: 22px; }
@@ -296,6 +357,11 @@
   </style>
 </head>
 <body>
+  <div class="network-status" id="networkStatus">
+    <span class="network-dot"></span>
+    <span id="networkText">檢測網絡中...</span>
+  </div>
+
   <main class="app">
     <section class="header">
       <div class="badge">📚 圖書館入館記錄</div>
@@ -325,7 +391,7 @@
       </div>
 
       <div class="footer">
-        <div class="footer-text">提交後會自動返回主畫面，不需要再按 Google 表單提交。</div>
+        <div class="footer-text">右上角會自動檢測網絡；網絡錯誤時不會提交。</div>
         <button class="fullscreen-btn" id="fullscreenBtn" type="button" onclick="toggleFullscreen()">點我全屏</button>
       </div>
     </section>
@@ -333,9 +399,9 @@
 
   <div class="toast-layer" id="toastLayer">
     <div class="toast">
-      <div class="check">✓</div>
-      <h2>提交成功</h2>
-      <p><span id="submittedGrade">年級</span> 已記錄，正在返回主頁面...</p>
+      <div class="toast-icon success" id="toastIcon">✓</div>
+      <h2 id="toastTitle">提交成功</h2>
+      <p id="toastMessage"><span id="submittedGrade">年級</span> 已記錄，正在返回主頁面...</p>
     </div>
   </div>
 
@@ -345,14 +411,98 @@
     const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLScPUl_1_o3XPVEPljqI9fhOFXknc3nK9puWNWGzosvfVPs84g/formResponse";
     const ENTRY_NAME = "entry.842011085";
 
+    // 每隔 2 秒測一次；超過 3 秒就當作超時
+    const PING_INTERVAL = 2000;
+    const PING_TIMEOUT = 3000;
+
     const toastLayer = document.getElementById("toastLayer");
+    const toastIcon = document.getElementById("toastIcon");
+    const toastTitle = document.getElementById("toastTitle");
+    const toastMessage = document.getElementById("toastMessage");
     const submittedGrade = document.getElementById("submittedGrade");
     const fullscreenBtn = document.getElementById("fullscreenBtn");
+    const networkStatus = document.getElementById("networkStatus");
+    const networkText = document.getElementById("networkText");
 
     let locked = false;
+    let networkOK = false;
+    let lastPingMs = null;
+
+    function showToast(type, title, message, ms = 500) {
+      toastIcon.className = "toast-icon " + (type === "error" ? "error" : "success");
+      toastIcon.textContent = type === "error" ? "!" : "✓";
+      toastTitle.textContent = title;
+      toastMessage.innerHTML = message;
+      toastLayer.classList.add("show");
+
+      setTimeout(() => {
+        toastLayer.classList.remove("show");
+      }, ms);
+    }
+
+    function setNetworkStatus(status, text) {
+      networkStatus.className = "network-status " + status;
+      networkText.textContent = text;
+
+      const buttons = document.querySelectorAll(".grade-btn");
+      buttons.forEach((btn) => {
+        if (status === "bad") {
+          btn.classList.add("disabled");
+        } else {
+          btn.classList.remove("disabled");
+        }
+      });
+    }
+
+    function getPingUrl() {
+      // 如果已經放到 GitHub Pages，就 ping 當前頁面，最準。
+      if (location.protocol === "http:" || location.protocol === "https:") {
+        const base = location.origin + location.pathname;
+        return base + "?ping=" + Date.now();
+      }
+
+      // 如果是在本機直接打開 HTML，就用 GitHub 的小圖標測試網絡。
+      return "https://github.githubassets.com/favicons/favicon.png?ping=" + Date.now();
+    }
+
+    function checkNetwork() {
+      const start = performance.now();
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), PING_TIMEOUT);
+
+      fetch(getPingUrl(), {
+        method: "GET",
+        cache: "no-store",
+        mode: location.protocol === "file:" ? "no-cors" : "same-origin",
+        signal: controller.signal
+      })
+      .then(() => {
+        clearTimeout(timer);
+        lastPingMs = Math.round(performance.now() - start);
+        networkOK = true;
+
+        if (lastPingMs <= 800) {
+          setNetworkStatus("good", "網絡良好 " + lastPingMs + "ms");
+        } else {
+          setNetworkStatus("slow", "網絡較慢 " + lastPingMs + "ms");
+        }
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        lastPingMs = null;
+        networkOK = false;
+        setNetworkStatus("bad", "連接失敗 / 超時");
+      });
+    }
 
     function submitGrade(grade) {
       if (locked) return;
+
+      if (!networkOK) {
+        showToast("error", "提交失敗", "網絡錯誤，請檢查連接後再試。", 1200);
+        return;
+      }
+
       locked = true;
 
       const form = document.createElement("form");
@@ -371,12 +521,11 @@
       form.remove();
 
       submittedGrade.textContent = grade;
-      toastLayer.classList.add("show");
+      showToast("success", "提交成功", "<span>" + grade + "</span> 已記錄，正在返回主頁面...", 500);
 
       setTimeout(() => {
-        toastLayer.classList.remove("show");
         locked = false;
-      }, 1000);
+      }, 500);
     }
 
     function getFullscreenElement() {
@@ -416,6 +565,15 @@
     document.addEventListener("webkitfullscreenchange", () => {
       fullscreenBtn.textContent = getFullscreenElement() ? "退出全屏" : "點我全屏";
     });
+
+    window.addEventListener("online", checkNetwork);
+    window.addEventListener("offline", () => {
+      networkOK = false;
+      setNetworkStatus("bad", "連接失敗 / 超時");
+    });
+
+    checkNetwork();
+    setInterval(checkNetwork, PING_INTERVAL);
   </script>
 </body>
 </html>

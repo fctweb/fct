@@ -177,24 +177,31 @@
       flex-wrap: wrap;
     }
 
-    .count-box {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      background: rgba(15, 23, 42, 0.05);
-      padding: 10px 14px;
-      border-radius: 16px;
+    .footer-text {
       font-weight: 700;
     }
 
-    .reset-btn {
+    .fullscreen-btn {
       border: none;
-      border-radius: 14px;
-      padding: 10px 14px;
+      border-radius: 18px;
+      padding: 14px 22px;
       cursor: pointer;
-      background: rgba(239, 68, 68, 0.1);
-      color: #b91c1c;
-      font-weight: 800;
+      background: linear-gradient(135deg, #0f172a, #334155);
+      color: white;
+      font-weight: 900;
+      font-size: 18px;
+      letter-spacing: 1px;
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.22);
+      transition: transform 0.12s ease, filter 0.12s ease;
+    }
+
+    .fullscreen-btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.08);
+    }
+
+    .fullscreen-btn:active {
+      transform: scale(0.97);
     }
 
     .toast-layer {
@@ -268,7 +275,14 @@
         border-radius: 20px;
         letter-spacing: 3px;
       }
-      .footer { justify-content: center; text-align: center; }
+      .footer {
+        justify-content: center;
+        text-align: center;
+      }
+      .fullscreen-btn {
+        width: 100%;
+        max-width: 320px;
+      }
     }
 
     @media (max-width: 480px) {
@@ -311,9 +325,8 @@
       </div>
 
       <div class="footer">
-        <div class="count-box">本機今日已點擊：<span id="localCount">0</span> 次</div>
-        <div>提交後會自動返回主畫面，不需要再按 Google 表單提交。</div>
-        <button class="reset-btn" type="button" onclick="resetLocalCount()">重置本機計數</button>
+        <div class="footer-text">提交後會自動返回主畫面，不需要再按 Google 表單提交。</div>
+        <button class="fullscreen-btn" id="fullscreenBtn" type="button" onclick="toggleFullscreen()">點我全屏</button>
       </div>
     </section>
   </main>
@@ -334,33 +347,9 @@
 
     const toastLayer = document.getElementById("toastLayer");
     const submittedGrade = document.getElementById("submittedGrade");
-    const localCount = document.getElementById("localCount");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
 
     let locked = false;
-
-    function getTodayKey() {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, "0");
-      const d = String(now.getDate()).padStart(2, "0");
-      return `library_count_${y}-${m}-${d}`;
-    }
-
-    function loadLocalCount() {
-      localCount.textContent = localStorage.getItem(getTodayKey()) || "0";
-    }
-
-    function addLocalCount() {
-      const key = getTodayKey();
-      const next = Number(localStorage.getItem(key) || "0") + 1;
-      localStorage.setItem(key, String(next));
-      localCount.textContent = String(next);
-    }
-
-    function resetLocalCount() {
-      localStorage.setItem(getTodayKey(), "0");
-      loadLocalCount();
-    }
 
     function submitGrade(grade) {
       if (locked) return;
@@ -381,7 +370,6 @@
       form.submit();
       form.remove();
 
-      addLocalCount();
       submittedGrade.textContent = grade;
       toastLayer.classList.add("show");
 
@@ -391,7 +379,43 @@
       }, 1000);
     }
 
-    loadLocalCount();
+    function getFullscreenElement() {
+      return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+    }
+
+    function toggleFullscreen() {
+      if (!getFullscreenElement()) {
+        const page = document.documentElement;
+
+        if (page.requestFullscreen) {
+          page.requestFullscreen();
+        } else if (page.webkitRequestFullscreen) {
+          page.webkitRequestFullscreen();
+        } else if (page.msRequestFullscreen) {
+          page.msRequestFullscreen();
+        }
+
+        fullscreenBtn.textContent = "退出全屏";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        }
+
+        fullscreenBtn.textContent = "點我全屏";
+      }
+    }
+
+    document.addEventListener("fullscreenchange", () => {
+      fullscreenBtn.textContent = getFullscreenElement() ? "退出全屏" : "點我全屏";
+    });
+
+    document.addEventListener("webkitfullscreenchange", () => {
+      fullscreenBtn.textContent = getFullscreenElement() ? "退出全屏" : "點我全屏";
+    });
   </script>
 </body>
 </html>

@@ -1583,6 +1583,214 @@
   }
 }
 
+
+/* =========================================================
+   True old-iPad simulator
+   Internal CSS viewport is ALWAYS 1024x768 (landscape)
+   or 768x1024 (portrait), regardless of host device.
+   The host browser only scales the entire simulator uniformly.
+   ========================================================= */
+
+:root {
+  --sim-scale: 1;
+}
+
+/* The outer page only centers the fixed iPad canvas. */
+.page-wrap.device-ipad-landscape,
+.page-wrap.device-ipad-portrait {
+  overflow: hidden !important;
+  padding: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Fixed internal CSS viewport. */
+.page-wrap.device-ipad-landscape .stage {
+  width: 1024px !important;
+  height: 768px !important;
+  min-width: 1024px !important;
+  min-height: 768px !important;
+  max-width: none !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+  transform: scale(var(--sim-scale)) !important;
+  transform-origin: center center !important;
+  flex: 0 0 auto !important;
+}
+
+.page-wrap.device-ipad-portrait .stage {
+  width: 768px !important;
+  height: 1024px !important;
+  min-width: 768px !important;
+  min-height: 1024px !important;
+  max-width: none !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+  transform: scale(var(--sim-scale)) !important;
+  transform-origin: center center !important;
+  flex: 0 0 auto !important;
+}
+
+/* Make the app exactly fill that internal viewport. */
+.page-wrap.device-ipad-landscape .app,
+.page-wrap.device-ipad-portrait .app {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Host-device size must never alter the iPad layout. */
+@media (max-width: 980px) {
+  .page-wrap.device-ipad-landscape .stage {
+    width: 1024px !important;
+    height: 768px !important;
+    min-width: 1024px !important;
+    min-height: 768px !important;
+  }
+
+  .page-wrap.device-ipad-portrait .stage {
+    width: 768px !important;
+    height: 1024px !important;
+    min-width: 768px !important;
+    min-height: 1024px !important;
+  }
+}
+
+/* Device badge clarifies this is a fixed viewport, not a generic 4:3 box. */
+.page-wrap.device-ipad-landscape::after {
+  content: "Old iPad · 1024×768 CSS viewport" !important;
+}
+
+.page-wrap.device-ipad-portrait::after {
+  content: "Old iPad · 768×1024 CSS viewport" !important;
+}
+
+
+/* =========================================================
+   Slider Peek Mode
+   拖動滑條時，設定面板自動淡出，方便直接觀察後方 iPad 預覽。
+   ========================================================= */
+.settings-layer {
+  transition: background-color .22s ease, backdrop-filter .22s ease, -webkit-backdrop-filter .22s ease;
+}
+
+.settings-layer.slider-peek {
+  background: rgba(15, 23, 42, .04) !important;
+  backdrop-filter: blur(1px) !important;
+  -webkit-backdrop-filter: blur(1px) !important;
+}
+
+.settings-layer.slider-peek .settings-modal,
+.settings-layer.slider-peek .settings-panel,
+.settings-layer.slider-peek .modal,
+.settings-layer.slider-peek .settings-card-wrap {
+  opacity: .18 !important;
+  transition: opacity .20s ease !important;
+}
+
+/* 常見的實際設定容器也一起支援；不存在的 selector 不會有影響 */
+.settings-modal,
+.settings-panel,
+.settings-card-wrap {
+  transition: opacity .20s ease;
+}
+
+/* 拖動期間滑條仍保持正常操作 */
+.settings-layer.slider-peek input[type="range"] {
+  cursor: grabbing;
+}
+
+/* 若瀏覽器偏好減少動畫，就直接切換，不強迫動畫 */
+@media (prefers-reduced-motion: reduce) {
+  .settings-layer,
+  .settings-modal,
+  .settings-panel,
+  .settings-card-wrap {
+    transition: none !important;
+  }
+}
+
+
+/* =========================================================
+   FIXED Slider Peek Mode
+   實際設定層是 .modal-layer / .modal
+   ========================================================= */
+#settingsLayer {
+  transition:
+    background-color .20s ease,
+    backdrop-filter .20s ease,
+    -webkit-backdrop-filter .20s ease;
+}
+
+#settingsLayer > .modal {
+  transition:
+    background-color .20s ease,
+    border-color .20s ease,
+    box-shadow .20s ease,
+    backdrop-filter .20s ease,
+    -webkit-backdrop-filter .20s ease;
+}
+
+#settingsLayer .modal-head,
+#settingsLayer .setting-card {
+  transition:
+    opacity .18s ease,
+    transform .18s ease,
+    background-color .18s ease,
+    box-shadow .18s ease;
+}
+
+/* 拖滑條時幾乎清空遮罩 */
+#settingsLayer.slider-peek {
+  background: rgba(15,23,42,.015) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 玻璃大面板本身也變得幾乎透明 */
+#settingsLayer.slider-peek > .modal {
+  background: rgba(255,255,255,.035) !important;
+  border-color: rgba(255,255,255,.08) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 除了正在拖動的那一格，其餘設定全部淡掉 */
+#settingsLayer.slider-peek .modal-head,
+#settingsLayer.slider-peek .setting-card {
+  opacity: .035 !important;
+  pointer-events: none;
+}
+
+/* 正在操作的滑條卡片保留可見和可操作 */
+#settingsLayer.slider-peek .setting-card.active-slider-card {
+  opacity: .82 !important;
+  pointer-events: auto !important;
+  transform: scale(.985);
+  background: rgba(255,255,255,.72) !important;
+  box-shadow: 0 12px 38px rgba(0,0,0,.14);
+}
+
+/* 滑條本身最清楚，避免手指/滑鼠找不到 */
+#settingsLayer.slider-peek .setting-card.active-slider-card input[type="range"],
+#settingsLayer.slider-peek .setting-card.active-slider-card .range-value,
+#settingsLayer.slider-peek .setting-card.active-slider-card .label {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #settingsLayer,
+  #settingsLayer > .modal,
+  #settingsLayer .modal-head,
+  #settingsLayer .setting-card {
+    transition: none !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1662,7 +1870,7 @@
       <div class="modal-head">
         <div>
           <h2 class="modal-title">老師預覽設定</h2>
-          <p class="modal-subtitle">選好後按「生成配置密鑰」，把密鑰複製給學生即可。</p>
+          <p class="modal-subtitle">選好後按「生成壓縮密鑰」，把較短的密鑰複製給學生即可。</p>
         </div>
         <button class="close-btn" type="button" onclick="closeSettings()">×</button>
       </div>
@@ -1692,10 +1900,10 @@
           <label class="label">iPad 螢幕比例模擬</label>
           <select id="deviceSelect" onchange="setConfig('device', this.value)">
             <option value="auto">自適應螢幕</option>
-            <option value="ipad-landscape">iPad 橫屏 4:3（預設）</option>
-            <option value="ipad-portrait">iPad 直屏 4:3</option>
+            <option value="ipad-landscape">老款 iPad 横屏 1024×768（預設）</option>
+            <option value="ipad-portrait">老款 iPad 直屏 768×1024</option>
           </select>
-          <p class="hint-text">學校有 Home 鍵的舊 iPad 多數是 4:3。此模式會按 iPad 比例重新排版，不是把電腦版硬縮小。</p>
+          <p class="hint-text">此模式固定模擬老款 iPad 的 CSS 視口：橫屏 1024×768、直屏 768×1024。電腦或手機只會等比例縮放整台 iPad，不會改變內部排版比例。</p>
         </div>
 
         <div class="setting-card">
@@ -1768,60 +1976,13 @@
         </div>
 
         <div class="setting-card full">
-          <label class="label">自動化批量調色規則</label>
-          <div class="rule-builder">
-            <div class="field">
-              <label class="label">目標</label>
-              <select id="ruleTarget" onchange="updateRuleHint()">
-                <option value="number">學號按鈕</option>
-                <option value="class">班級按鈕</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label class="label">規則類型</label>
-              <select id="ruleType" onchange="updateRuleHint()">
-                <option value="range">範圍</option>
-                <option value="list">指定列表</option>
-                <option value="odd">單數</option>
-                <option value="even">雙數</option>
-                <option value="contains">包含文字</option>
-                <option value="all">全部</option>
-              </select>
-            </div>
-
-            <div class="field wide">
-              <label class="label">規則內容</label>
-              <input class="rule-input" id="ruleValue" placeholder="例如：1-8 或 1,3,5,12 或 初一" />
-            </div>
-
-            <div class="field">
-              <label class="label">顏色</label>
-              <input class="rule-color" id="ruleColor" type="color" value="#007aff" />
-            </div>
-
-            <div class="field wide">
-              <button class="primary-action" type="button" onclick="addColorRule()">新增規則</button>
-            </div>
-
-            <div class="field wide">
-              <button class="secondary-action" type="button" onclick="clearColorRules()">清空規則</button>
-            </div>
-          </div>
-
-          <p class="tiny-note" id="ruleHint">
-            例：學號範圍填 1-8，就會把 1 到 8 號改成指定顏色；也可以用指定列表 1,3,5,12。
-          </p>
-
-          <div class="rules-list" id="rulesList"></div>
-        </div>
-
-        <div class="setting-card full">
-          <label class="label">配置密鑰</label>
-          <textarea id="configKey" placeholder="按「生成配置密鑰」後，這裡會出現一串密鑰。老師把這串複製給你就行。"></textarea>
+          <p class="hint-text">按住任何滑條拖動時，設定面板會自動淡出，鬆手後恢復，方便直接觀察預覽效果。</p>
+          <label class="label">壓縮配置密鑰</label>
+          <textarea id="configKey" placeholder="配置一有變更，這裡會自動更新 LIB2 壓縮密鑰。也可以貼入 LIB2 / 舊 LIBCFG1 密鑰再按「套用密鑰」。"></textarea>
+                    <div id="keyStats" class="hint-text" style="margin-top:8px">密鑰會自動更新，並自動做完整恢復校驗。</div>
+          <p class="hint-text" style="margin-top:6px"><strong>完整性：</strong>目前頁面設定都會寫入密鑰；每次更新後會立即反解一次比對，通過才顯示「✓ 完整恢復校驗通過」。</p>
           <div class="action-row">
-            <button class="primary-action" type="button" onclick="generateKey()">生成配置密鑰</button>
-            <button class="secondary-action" type="button" onclick="copyKey()">複製密鑰</button>
+            <button class="primary-action" type="button" onclick="copyKey()">複製目前密鑰</button>
             <button class="secondary-action" type="button" onclick="applyKeyFromBox()">套用密鑰</button>
             <button class="secondary-action" type="button" onclick="resetConfig()">恢復預設</button>
           </div>
@@ -2166,6 +2327,7 @@
     }
 
     function updateRuleHint() {
+      if (!ruleTarget || !ruleType || !ruleValue || !ruleHint) return;
       const target = ruleTarget.value;
       const type = ruleType.value;
 
@@ -2724,18 +2886,44 @@
 
     function setButtonGap(value) {
       config.buttonGap = Number(value);
-      document.documentElement.style.setProperty("--button-gap", config.buttonGap + "px");
-      const el = document.getElementById("buttonGapValue");
-      if (el) el.textContent = config.buttonGap + "px";
-      generateKey();
+      applyConfig(false);
     }
 
     function setSidePadding(value) {
       config.sidePadding = Number(value);
-      document.documentElement.style.setProperty("--side-padding", value + "px");
+      document.documentElement.style.setProperty("--side-padding", config.sidePadding + "px");
       const el = document.getElementById("sidePaddingValue");
-      if (el) el.textContent = value + "px";
+      if (el) el.textContent = config.sidePadding + "px";
       generateKey();
+    }
+
+
+    function updateTrueIpadSimulatorScale() {
+      const device = config.device || "ipad-landscape";
+
+      if (device === "auto") {
+        document.documentElement.style.setProperty("--sim-scale", "1");
+        return;
+      }
+
+      const landscape = device === "ipad-landscape";
+      const baseWidth = landscape ? 1024 : 768;
+      const baseHeight = landscape ? 768 : 1024;
+
+      // Leave a small safe area around the simulated iPad.
+      const availableWidth = Math.max(1, window.innerWidth - 24);
+      const availableHeight = Math.max(1, window.innerHeight - 24);
+
+      // Uniform fit: host device changes ONLY this outer scale.
+      const fitScale = Math.min(
+        availableWidth / baseWidth,
+        availableHeight / baseHeight
+      );
+
+      document.documentElement.style.setProperty(
+        "--sim-scale",
+        String(Math.min(1, fitScale))
+      );
     }
 
     function applyConfig(shouldRefreshControls = true) {
@@ -2768,6 +2956,8 @@
       renderRulesList();
       updateRuleHint();
       refreshFlow();
+      requestAnimationFrame(updateTrueIpadSimulatorScale);
+      generateKey();
     }
 
     function updateSettingsUI() {
@@ -2801,10 +2991,318 @@
       applyConfig();
     }
 
+
+    const KEY_DEFAULTS = {
+      mode: "2",
+      theme: "apple",
+      device: "ipad-landscape",
+      scale: 0.72,
+      fontScale: 0.78,
+      size: "normal",
+      classCols: 6,
+      numberCols: 10,
+      rowAlign: "center",
+      sidePadding: 18,
+      buttonGap: 0,
+      gradeColors: {
+        "初一": "#007aff",
+        "初二": "#34c759",
+        "初三": "#ff9500",
+        "高一": "#af52de",
+        "高二": "#ff2d55",
+        "高三": "#30b0c7"
+      }
+    };
+
+    const KEY_THEME_TO_CODE = {
+      apple: "a",
+      colorful: "c",
+      green: "g",
+      purple: "p",
+      orange: "o",
+      dark: "d"
+    };
+    const KEY_CODE_TO_THEME = Object.fromEntries(
+      Object.entries(KEY_THEME_TO_CODE).map(([k, v]) => [v, k])
+    );
+
+    const KEY_DEVICE_TO_CODE = {
+      "ipad-landscape": "l",
+      "ipad-portrait": "p",
+      auto: "a"
+    };
+    const KEY_CODE_TO_DEVICE = Object.fromEntries(
+      Object.entries(KEY_DEVICE_TO_CODE).map(([k, v]) => [v, k])
+    );
+
+    const KEY_SIZE_TO_CODE = { small: "s", normal: "n", large: "l" };
+    const KEY_CODE_TO_SIZE = Object.fromEntries(
+      Object.entries(KEY_SIZE_TO_CODE).map(([k, v]) => [v, k])
+    );
+
+    const KEY_ALIGN_TO_CODE = { left: "l", center: "c", stretch: "s" };
+    const KEY_CODE_TO_ALIGN = Object.fromEntries(
+      Object.entries(KEY_ALIGN_TO_CODE).map(([k, v]) => [v, k])
+    );
+
+    const KEY_RULE_TARGET = { number: "n", class: "c" };
+    const KEY_RULE_TARGET_REV = { n: "number", c: "class" };
+    const KEY_RULE_TYPE = {
+      range: "r",
+      list: "l",
+      odd: "o",
+      even: "e",
+      contains: "c",
+      all: "a"
+    };
+    const KEY_RULE_TYPE_REV = Object.fromEntries(
+      Object.entries(KEY_RULE_TYPE).map(([k, v]) => [v, k])
+    );
+
+    function compactHex(hex) {
+      let s = String(hex || "").trim().toLowerCase().replace("#", "");
+      if (/^[0-9a-f]{6}$/.test(s) &&
+          s[0] === s[1] && s[2] === s[3] && s[4] === s[5]) {
+        s = s[0] + s[2] + s[4];
+      }
+      return s;
+    }
+
+    function expandHex(s) {
+      s = String(s || "").replace("#", "");
+      if (/^[0-9a-f]{3}$/i.test(s)) {
+        s = s.split("").map(ch => ch + ch).join("");
+      }
+      return "#" + s;
+    }
+
+    function encodeButtonKey(key) {
+      const text = String(key || "");
+
+      if (text.startsWith("學號:")) {
+        return "N" + text.slice(3);
+      }
+
+      if (text.startsWith("班級:")) {
+        const className = text.slice(3);
+        const idx = ALL_CLASSES.indexOf(className);
+        if (idx >= 0) return "C" + idx.toString(36);
+      }
+
+      if (text.startsWith("年級:")) {
+        const grade = text.slice(3);
+        const idx = GRADES.indexOf(grade);
+        if (idx >= 0) return "G" + idx.toString(36);
+      }
+
+      return "X" + text;
+    }
+
+    function decodeButtonKey(code) {
+      const text = String(code || "");
+      if (text.startsWith("N")) return "學號:" + text.slice(1);
+
+      if (text.startsWith("C")) {
+        const idx = parseInt(text.slice(1), 36);
+        if (Number.isInteger(idx) && ALL_CLASSES[idx]) return "班級:" + ALL_CLASSES[idx];
+      }
+
+      if (text.startsWith("G")) {
+        const idx = parseInt(text.slice(1), 36);
+        if (Number.isInteger(idx) && GRADES[idx]) return "年級:" + GRADES[idx];
+      }
+
+      if (text.startsWith("X")) return text.slice(1);
+      return text;
+    }
+
+    function utf8ToBase64Url(text) {
+      const bytes = new TextEncoder().encode(text);
+      let binary = "";
+      bytes.forEach(b => binary += String.fromCharCode(b));
+      return btoa(binary)
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/g, "");
+    }
+
+    function base64UrlToUtf8(text) {
+      let b64 = String(text).replace(/-/g, "+").replace(/_/g, "/");
+      while (b64.length % 4) b64 += "=";
+      const binary = atob(b64);
+      const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    }
+
+    function buildCompactConfig(cfg) {
+      const d = KEY_DEFAULTS;
+      const o = {};
+
+      if (cfg.mode !== d.mode) o.m = cfg.mode;
+      if (cfg.theme !== d.theme) o.t = KEY_THEME_TO_CODE[cfg.theme] || cfg.theme;
+      if (cfg.device !== d.device) o.d = KEY_DEVICE_TO_CODE[cfg.device] || cfg.device;
+
+      // Store scale values as whole percentages to save characters.
+      if (Number(cfg.scale) !== d.scale) o.s = Math.round(Number(cfg.scale) * 100);
+      if (Number(cfg.fontScale) !== d.fontScale) o.f = Math.round(Number(cfg.fontScale) * 100);
+
+      if (cfg.size !== d.size) o.z = KEY_SIZE_TO_CODE[cfg.size] || cfg.size;
+      if (Number(cfg.classCols) !== d.classCols) o.c = Number(cfg.classCols);
+      if (Number(cfg.numberCols) !== d.numberCols) o.n = Number(cfg.numberCols);
+      if (cfg.rowAlign !== d.rowAlign) o.a = KEY_ALIGN_TO_CODE[cfg.rowAlign] || cfg.rowAlign;
+      if (Number(cfg.sidePadding) !== d.sidePadding) o.p = Number(cfg.sidePadding);
+      if (Number(cfg.buttonGap) !== d.buttonGap) o.g = Number(cfg.buttonGap);
+
+      const gc = [];
+      GRADES.forEach((grade, idx) => {
+        const value = cfg.gradeColors?.[grade];
+        if (value && value.toLowerCase() !== d.gradeColors[grade].toLowerCase()) {
+          gc.push([idx, compactHex(value)]);
+        }
+      });
+      if (gc.length) o.k = gc;
+
+      const bc = Object.entries(cfg.buttonColors || {})
+        .map(([key, color]) => [encodeButtonKey(key), compactHex(color)]);
+      if (bc.length) o.b = bc;
+
+      const rules = (cfg.colorRules || []).map(rule => [
+        KEY_RULE_TARGET[rule.target] || rule.target,
+        KEY_RULE_TYPE[rule.type] || rule.type,
+        rule.value || "",
+        compactHex(rule.color)
+      ]);
+      if (rules.length) o.r = rules;
+
+      return o;
+    }
+
+    function expandCompactConfig(o) {
+      const d = KEY_DEFAULTS;
+
+      const cfg = {
+        mode: o.m ?? d.mode,
+        theme: KEY_CODE_TO_THEME[o.t] || o.t || d.theme,
+        device: KEY_CODE_TO_DEVICE[o.d] || o.d || d.device,
+        scale: o.s != null ? Number(o.s) / 100 : d.scale,
+        fontScale: o.f != null ? Number(o.f) / 100 : d.fontScale,
+        size: KEY_CODE_TO_SIZE[o.z] || o.z || d.size,
+        classCols: o.c != null ? Number(o.c) : d.classCols,
+        numberCols: o.n != null ? Number(o.n) : d.numberCols,
+        rowAlign: KEY_CODE_TO_ALIGN[o.a] || o.a || d.rowAlign,
+        sidePadding: o.p != null ? Number(o.p) : d.sidePadding,
+        buttonGap: o.g != null ? Number(o.g) : d.buttonGap,
+        gradeColors: { ...d.gradeColors },
+        buttonColors: {},
+        colorRules: []
+      };
+
+      (o.k || []).forEach(([idx, color]) => {
+        const grade = GRADES[Number(idx)];
+        if (grade) cfg.gradeColors[grade] = expandHex(color);
+      });
+
+      (o.b || []).forEach(([key, color]) => {
+        cfg.buttonColors[decodeButtonKey(key)] = expandHex(color);
+      });
+
+      cfg.colorRules = (o.r || []).map(item => ({
+        target: KEY_RULE_TARGET_REV[item[0]] || item[0],
+        type: KEY_RULE_TYPE_REV[item[1]] || item[1],
+        value: item[2] || "",
+        color: expandHex(item[3])
+      }));
+
+      return cfg;
+    }
+
+
+    function canonicalConfig(cfg) {
+      const d = KEY_DEFAULTS;
+
+      const normalizedGradeColors = {};
+      GRADES.forEach((grade) => {
+        normalizedGradeColors[grade] = String(
+          cfg.gradeColors?.[grade] || d.gradeColors[grade]
+        ).toLowerCase();
+      });
+
+      const normalizedButtonColors = {};
+      Object.keys(cfg.buttonColors || {})
+        .sort()
+        .forEach((key) => {
+          normalizedButtonColors[key] = String(cfg.buttonColors[key]).toLowerCase();
+        });
+
+      const normalizedRules = (cfg.colorRules || []).map((rule) => ({
+        target: String(rule.target || ""),
+        type: String(rule.type || ""),
+        value: String(rule.value || ""),
+        color: String(rule.color || "").toLowerCase()
+      }));
+
+      return {
+        mode: String(cfg.mode ?? d.mode),
+        theme: String(cfg.theme ?? d.theme),
+        device: String(cfg.device ?? d.device),
+        scale: Number(cfg.scale ?? d.scale),
+        fontScale: Number(cfg.fontScale ?? d.fontScale),
+        size: String(cfg.size ?? d.size),
+        classCols: Number(cfg.classCols ?? d.classCols),
+        numberCols: Number(cfg.numberCols ?? d.numberCols),
+        rowAlign: String(cfg.rowAlign ?? d.rowAlign),
+        sidePadding: Number(cfg.sidePadding ?? d.sidePadding),
+        buttonGap: Number(cfg.buttonGap ?? d.buttonGap),
+        gradeColors: normalizedGradeColors,
+        buttonColors: normalizedButtonColors,
+        colorRules: normalizedRules
+      };
+    }
+
+    function configsExactlyMatch(a, b) {
+      return JSON.stringify(canonicalConfig(a)) === JSON.stringify(canonicalConfig(b));
+    }
+
+    function verifyGeneratedKey(encodedPayload) {
+      try {
+        const decodedObject = JSON.parse(base64UrlToUtf8(encodedPayload));
+        const restored = expandCompactConfig(decodedObject);
+        return configsExactlyMatch(config, restored);
+      } catch (err) {
+        console.error("LIB2 round-trip check failed:", err);
+        return false;
+      }
+    }
+
     function generateKey() {
-      const payload = JSON.stringify(config);
-      const encoded = btoa(unescape(encodeURIComponent(payload)));
-      configKey.value = "LIBCFG1." + encoded;
+      const compact = buildCompactConfig(config);
+      const payload = JSON.stringify(compact);
+      const encoded = utf8ToBase64Url(payload);
+      configKey.value = "LIB2." + encoded;
+
+      const verified = verifyGeneratedKey(encoded);
+      const stats = document.getElementById("keyStats");
+
+      if (stats) {
+        const oldPayload = btoa(unescape(encodeURIComponent(JSON.stringify(canonicalConfig(config)))));
+        const oldLength = ("LIBCFG1." + oldPayload).length;
+        const newLength = configKey.value.length;
+        const saved = oldLength
+          ? Math.max(0, Math.round((1 - newLength / oldLength) * 100))
+          : 0;
+
+        stats.textContent =
+          "自動更新 · " +
+          newLength +
+          " 字元 · 約縮短 " +
+          saved +
+          "% · " +
+          (verified ? "✓ 完整恢復校驗通過" : "⚠ 完整恢復校驗失敗");
+
+        stats.dataset.verified = verified ? "1" : "0";
+      }
+
+      return verified;
     }
 
     async function copyKey() {
@@ -2822,35 +3320,50 @@
 
     function applyKeyFromBox() {
       const raw = configKey.value.trim();
-      if (!raw.startsWith("LIBCFG1.")) {
-        showToast("error", "密鑰格式錯誤", "請貼上 LIBCFG1 開頭的配置密鑰。", 1200);
+
+      if (!raw.startsWith("LIB2.") && !raw.startsWith("LIBCFG1.")) {
+        showToast("error", "密鑰格式錯誤", "請貼上 LIB2 或舊版 LIBCFG1 開頭的配置密鑰。", 1200);
         return;
       }
 
       try {
-        const encoded = raw.replace("LIBCFG1.", "");
-        const obj = JSON.parse(decodeURIComponent(escape(atob(encoded))));
-        config = {
-          ...config,
-          ...obj,
-          device: obj.device || config.device || "ipad-landscape",
-          fontScale: obj.fontScale || config.fontScale || 1,
-          rowAlign: obj.rowAlign || config.rowAlign || "center",
-          gradeColors: {
-            "初一": "#007aff",
-            "初二": "#34c759",
-            "初三": "#ff9500",
-            "高一": "#af52de",
-            "高二": "#ff2d55",
-            "高三": "#30b0c7",
-            ...(obj.gradeColors || {})
-          },
-          buttonColors: obj.buttonColors || {},
-          colorRules: obj.colorRules || []
-        };
+        if (raw.startsWith("LIB2.")) {
+          const encoded = raw.slice(5);
+          const compactObj = JSON.parse(base64UrlToUtf8(encoded));
+          config = expandCompactConfig(compactObj);
+        } else {
+          // Backward compatibility with the old uncompressed key.
+          const encoded = raw.replace("LIBCFG1.", "");
+          const obj = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+          config = {
+            ...config,
+            ...obj,
+            device: obj.device || config.device || "ipad-landscape",
+            fontScale: obj.fontScale || config.fontScale || 0.78,
+            rowAlign: obj.rowAlign || config.rowAlign || "center",
+            gradeColors: {
+              "初一": "#007aff",
+              "初二": "#34c759",
+              "初三": "#ff9500",
+              "高一": "#af52de",
+              "高二": "#ff2d55",
+              "高三": "#30b0c7",
+              ...(obj.gradeColors || {})
+            },
+            buttonColors: obj.buttonColors || {},
+            colorRules: obj.colorRules || []
+          };
+        }
+
         applyConfig();
-        showToast("success", "已套用", "配置密鑰已套用到預覽頁面。", 700);
-      } catch {
+        showToast(
+          "success",
+          "已套用",
+          "配置已完整恢復，密鑰欄也已自動轉成最新 LIB2 格式。",
+          850
+        );
+      } catch (err) {
+        console.error(err);
         showToast("error", "密鑰無法讀取", "這串密鑰可能不完整，請重新複製。", 1200);
       }
     }
@@ -2861,11 +3374,13 @@
         theme: "apple",
         device: "ipad-landscape",
         scale: 0.72,
-        fontScale: 1,
+        fontScale: 0.78,
         size: "normal",
         classCols: 6,
         numberCols: 10,
         rowAlign: "center",
+        sidePadding: 18,
+        buttonGap: 0,
         gradeColors: {
           "初一": "#007aff",
           "初二": "#34c759",
@@ -2878,7 +3393,6 @@
         colorRules: []
       };
       applyConfig();
-      generateKey();
     }
 
     function openSettings() {
@@ -2930,8 +3444,86 @@
     renderGradeButtons();
     renderNumberButtons();
     applyConfig();
+    bindSliderPeekMode();
 
     setTimeout(openSettings, 450);
+  
+    
+    let activeSliderCard = null;
+
+    function setSliderPeek(active, slider = null) {
+      if (!settingsLayer) return;
+
+      if (active) {
+        if (activeSliderCard) {
+          activeSliderCard.classList.remove("active-slider-card");
+        }
+
+        activeSliderCard = slider ? slider.closest(".setting-card") : null;
+        if (activeSliderCard) {
+          activeSliderCard.classList.add("active-slider-card");
+        }
+
+        settingsLayer.classList.add("slider-peek");
+      } else {
+        settingsLayer.classList.remove("slider-peek");
+
+        if (activeSliderCard) {
+          activeSliderCard.classList.remove("active-slider-card");
+          activeSliderCard = null;
+        }
+      }
+    }
+
+    function bindSliderPeekMode() {
+      document.querySelectorAll('#settingsLayer input[type="range"]').forEach((slider) => {
+        if (slider.dataset.peekBound === "1") return;
+        slider.dataset.peekBound = "1";
+
+        slider.addEventListener("pointerdown", (event) => {
+          try {
+            slider.setPointerCapture(event.pointerId);
+          } catch (e) {}
+          setSliderPeek(true, slider);
+        });
+
+        slider.addEventListener("pointerup", () => {
+          setSliderPeek(false);
+        });
+
+        slider.addEventListener("pointercancel", () => {
+          setSliderPeek(false);
+        });
+
+        slider.addEventListener("lostpointercapture", () => {
+          setSliderPeek(false);
+        });
+
+        slider.addEventListener("blur", () => {
+          setSliderPeek(false);
+        });
+
+        slider.addEventListener("keydown", (event) => {
+          if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"].includes(event.key)) {
+            setSliderPeek(true, slider);
+          }
+        });
+
+        slider.addEventListener("keyup", () => {
+          setSliderPeek(false);
+        });
+      });
+    }
+
+    // 手指/滑鼠在面板外松開，也一定恢復，避免卡在透明狀態。
+    window.addEventListener("pointerup", () => setSliderPeek(false));
+    window.addEventListener("pointercancel", () => setSliderPeek(false));
+
+    window.addEventListener("resize", updateTrueIpadSimulatorScale);
+    window.addEventListener("orientationchange", () => {
+      setTimeout(updateTrueIpadSimulatorScale, 120);
+    });
+
   </script>
 </body>
 </html>

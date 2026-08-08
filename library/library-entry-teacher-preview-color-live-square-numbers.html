@@ -1,0 +1,2937 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>圖書館進館統計｜老師預覽設定</title>
+  <style>
+    :root {
+      --page-scale: 0.82;
+      --font-scale: 1;
+      --cols-class: 6;
+      --cols-number: 10;
+      --row-align: stretch;
+      --button-min: 104px;
+      --number-min: 74px;
+      --accent: #007aff;
+      --accent2: #5856d6;
+      --bg1: #f5f7fb;
+      --bg2: #eef4ff;
+      --text: #111827;
+      --muted: #6b7280;
+      --success: #34c759;
+      --danger: #ff3b30;
+      --glass: rgba(255,255,255,0.72);
+      --border: rgba(255,255,255,0.62);
+      --shadow: 0 30px 90px rgba(0,0,0,0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 34%),
+        radial-gradient(circle at 90% 82%, color-mix(in srgb, var(--accent2) 18%, transparent), transparent 32%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+    }
+
+    button, input, select, textarea {
+      font-family: inherit;
+    }
+
+    .page-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+    }
+
+    .stage {
+      width: min(1240px, calc(100vw - 44px));
+      transform: scale(var(--page-scale));
+      transform-origin: center center;
+    }
+
+    .top-tools {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      right: 18px;
+      z-index: 35;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .tool-group {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      pointer-events: auto;
+    }
+
+    .pill {
+      border: 1px solid rgba(255,255,255,0.58);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(25px) saturate(180%);
+      -webkit-backdrop-filter: blur(25px) saturate(180%);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.1);
+      padding: 10px 14px;
+      color: #1f2937;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+    }
+
+    .tool-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 11px 16px;
+      cursor: pointer;
+      font-weight: 900;
+      color: white;
+      background: rgba(0,0,0,0.84);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.16);
+      transition: transform .12s ease, filter .12s ease;
+    }
+
+    .tool-btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.08);
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 4px rgba(52,199,89,.16);
+    }
+
+    .app {
+      width: 100%;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 32px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(30px) saturate(180%);
+      -webkit-backdrop-filter: blur(30px) saturate(180%);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 34px 34px 18px;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--accent) 13%, transparent);
+      color: var(--accent);
+      font-size: calc(15px * var(--font-scale));
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: calc(clamp(36px, 6vw, 64px) * var(--font-scale));
+      font-weight: 850;
+      letter-spacing: -1px;
+      line-height: 1.05;
+    }
+
+    .subtitle {
+      margin: 14px 0 0;
+      font-size: calc(clamp(16px, 2vw, 22px) * var(--font-scale));
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    .main {
+      padding: 20px 34px 38px;
+    }
+
+    .step-panel {
+      display: none;
+    }
+
+    .step-panel.active {
+      display: block;
+    }
+
+    .section-title {
+      margin: 0 0 18px;
+      text-align: center;
+      font-size: calc(clamp(24px, 3vw, 36px) * var(--font-scale));
+      font-weight: 900;
+      letter-spacing: 3px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grade-grid {
+      grid-template-columns: repeat(6, 1fr);
+    }
+
+    .class-grid {
+      grid-template-columns: repeat(var(--cols-class), 1fr);
+    }
+
+    .number-grid {
+      grid-template-columns: repeat(var(--cols-number), 1fr);
+      gap: 8px;
+    }
+
+    .big-btn {
+      border: 1px solid rgba(255,255,255,0.28);
+      border-radius: 24px;
+      color: white;
+      cursor: pointer;
+      font-weight: 850;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, var(--btn-c1), var(--btn-c2));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.35),
+        0 14px 32px var(--btn-shadow);
+      transition: transform .12s ease, filter .12s ease, opacity .12s ease;
+      overflow: hidden;
+    }
+
+    .big-btn:hover {
+      transform: translateY(-3px) scale(1.015);
+      filter: brightness(1.05);
+    }
+
+    .big-btn:active {
+      transform: scale(.97);
+    }
+
+    .big-btn:disabled {
+      opacity: .72;
+      cursor: not-allowed;
+      transform: none !important;
+      filter: grayscale(.2) brightness(.9);
+    }
+
+    .grade-btn,
+    .class-btn {
+      min-height: var(--button-min);
+      font-size: calc(clamp(28px, 3.8vw, 44px) * var(--font-scale));
+    }
+
+    .number-btn {
+      min-height: var(--number-min);
+      font-size: calc(clamp(26px, 3.1vw, 40px) * var(--font-scale));
+    }
+
+    .chosen-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(255,255,255,0.58);
+      border-radius: 26px;
+      padding: 16px 20px;
+      margin-bottom: 18px;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+    }
+
+    .chosen-text {
+      font-size: calc(clamp(22px, 2.8vw, 34px) * var(--font-scale));
+      font-weight: 900;
+    }
+
+    .back-btn,
+    .fullscreen-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      cursor: pointer;
+      background: rgba(0,0,0,.84);
+      color: white;
+      font-weight: 900;
+      font-size: calc(17px * var(--font-scale));
+      letter-spacing: 1px;
+      box-shadow: 0 12px 26px rgba(0,0,0,.16);
+    }
+
+    .footer {
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      color: var(--muted);
+      font-size: calc(15px * var(--font-scale));
+      flex-wrap: wrap;
+    }
+
+    .footer-text {
+      font-weight: 750;
+    }
+
+    .toast-layer {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, .32);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 50;
+      padding: 20px;
+      pointer-events: auto;
+    }
+
+    .toast-layer.show {
+      display: flex;
+    }
+
+    .toast {
+      width: min(560px, 100%);
+      background: rgba(255,255,255,.84);
+      border: 1px solid rgba(255,255,255,.66);
+      border-radius: 28px;
+      padding: 42px 30px;
+      text-align: center;
+      box-shadow: 0 30px 80px rgba(0,0,0,.24);
+      backdrop-filter: blur(35px) saturate(180%);
+      -webkit-backdrop-filter: blur(35px) saturate(180%);
+      animation: pop .18s ease-out;
+    }
+
+    @keyframes pop {
+      from { transform: scale(.92); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .toast-icon {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      margin: 0 auto 18px;
+      color: white;
+      display: grid;
+      place-items: center;
+      font-size: 54px;
+      font-weight: 900;
+    }
+
+    .toast-icon.success {
+      background: linear-gradient(145deg,#34c759,#30d158);
+      box-shadow: 0 14px 32px rgba(52,199,89,.28);
+      animation: successPop .24s ease-out;
+    }
+
+    .toast-icon.error {
+      background: linear-gradient(145deg,#ff453a,#ff3b30);
+      box-shadow: 0 14px 32px rgba(255,59,48,.25);
+      animation: successPop .24s ease-out;
+    }
+
+    @keyframes successPop {
+      0% { transform: scale(.72); opacity: 0; }
+      70% { transform: scale(1.08); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .check-svg {
+      width: 58px;
+      height: 58px;
+    }
+
+    .check-svg path {
+      fill: none;
+      stroke: white;
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 60;
+      stroke-dashoffset: 60;
+      animation: drawCheck .28s ease-out .12s forwards;
+    }
+
+    @keyframes drawCheck {
+      to { stroke-dashoffset: 0; }
+    }
+
+    .toast h2 {
+      margin: 0;
+      font-size: 42px;
+    }
+
+    .toast p {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 20px;
+      font-weight: 650;
+    }
+
+    .modal-layer {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 80;
+      padding: 18px;
+      background: rgba(15,23,42,.36);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .modal-layer.show {
+      display: flex;
+    }
+
+    .modal {
+      width: min(980px, 100%);
+      max-height: 92vh;
+      overflow: auto;
+      background: rgba(255,255,255,.88);
+      border: 1px solid rgba(255,255,255,.70);
+      border-radius: 34px;
+      box-shadow: 0 35px 95px rgba(0,0,0,.24);
+      backdrop-filter: blur(35px) saturate(180%);
+      -webkit-backdrop-filter: blur(35px) saturate(180%);
+      padding: 18px;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .modal-title {
+      margin: 0;
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+    }
+
+    .modal-subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    .close-btn {
+      border: none;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: rgba(0,0,0,.08);
+      color: #111827;
+      font-size: 24px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .setting-card {
+      background: rgba(255,255,255,.62);
+      border: 1px solid rgba(255,255,255,.72);
+      border-radius: 24px;
+      padding: 16px;
+    }
+
+    .setting-card.full {
+      grid-column: 1 / -1;
+    }
+
+    .label {
+      display: block;
+      font-size: 15px;
+      color: #374151;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      background: rgba(0,0,0,.06);
+      padding: 6px;
+      border-radius: 15px;
+    }
+
+    .segmented.three {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .seg-btn {
+      border: none;
+      border-radius: 14px;
+      padding: 10px 12px;
+      cursor: pointer;
+      background: transparent;
+      color: #374151;
+      font-weight: 900;
+    }
+
+    .seg-btn.active {
+      background: white;
+      color: #111827;
+      box-shadow: 0 8px 20px rgba(0,0,0,.10);
+    }
+
+    select, input[type="range"], textarea {
+      width: 100%;
+    }
+
+    select {
+      border: 1px solid rgba(0,0,0,.08);
+      background: white;
+      border-radius: 16px;
+      padding: 12px 14px;
+      font-size: 16px;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+    }
+
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .range-value {
+      min-width: 64px;
+      text-align: right;
+      font-weight: 900;
+      color: #111827;
+    }
+
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 15px;
+      padding: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #111827;
+      background: white;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .primary-action,
+    .secondary-action {
+      border: none;
+      border-radius: 999px;
+      padding: 12px 16px;
+      cursor: pointer;
+      font-weight: 900;
+      font-size: 15px;
+    }
+
+    .primary-action {
+      background: var(--accent);
+      color: white;
+    }
+
+    .secondary-action {
+      background: rgba(0,0,0,.08);
+      color: #111827;
+    }
+
+
+    .grade-color-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+    }
+
+    .grade-color-item {
+      background: rgba(255,255,255,.64);
+      border: 1px solid rgba(0,0,0,.06);
+      border-radius: 15px;
+      padding: 8px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .grade-color-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 900;
+      color: #111827;
+      font-size: 14px;
+    }
+
+    .grade-color-input {
+      width: 100%;
+      height: 42px;
+      border: none;
+      border-radius: 14px;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .grade-color-input::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    .grade-color-input::-webkit-color-swatch {
+      border: none;
+      border-radius: 14px;
+    }
+
+    .preview-mode-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 10px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(255,149,0,.14);
+      color: #b45309;
+      font-weight: 900;
+      font-size: 14px;
+    }
+
+    .hint-text {
+      margin: 10px 0 0;
+      color: #6b7280;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+
+    .class-group-list {
+      display: grid;
+      gap: 18px;
+    }
+
+    .class-row {
+      display: grid;
+      gap: 7px;
+      background: rgba(255,255,255,.32);
+      border: 1px solid rgba(255,255,255,.48);
+      border-radius: 26px;
+      padding: 8px;
+      backdrop-filter: blur(18px) saturate(160%);
+      -webkit-backdrop-filter: blur(18px) saturate(160%);
+    }
+
+    .class-row-title {
+      display: none;
+    }
+
+    .class-row-buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .class-row-buttons .class-btn {
+      min-height: calc(var(--button-min) * .86);
+    }
+
+    .class-row-buttons {
+      justify-content: var(--row-justify, stretch);
+    }
+
+    .class-row-buttons.count-3,
+    .class-row-buttons.count-2 {
+      grid-template-columns: var(--row-grid-template, repeat(4, 1fr));
+    }
+
+    .class-row-buttons.align-center.count-3 {
+      grid-template-columns: repeat(3, minmax(160px, 1fr));
+      justify-content: center;
+    }
+
+    .class-row-buttons.align-center.count-2 {
+      grid-template-columns: repeat(2, minmax(160px, 1fr));
+      justify-content: center;
+    }
+
+    .class-row-buttons.align-left.count-3 {
+      grid-template-columns: repeat(3, minmax(160px, 1fr));
+      justify-content: start;
+    }
+
+    .class-row-buttons.align-left.count-2 {
+      grid-template-columns: repeat(2, minmax(160px, 1fr));
+      justify-content: start;
+    }
+
+    .class-row-buttons.align-stretch.count-3,
+    .class-row-buttons.align-stretch.count-2 {
+      grid-template-columns: repeat(4, 1fr);
+      justify-content: stretch;
+    }
+
+    .color-editor-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 95;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(15,23,42,.26);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .color-editor-layer.show {
+      display: flex;
+    }
+
+    .color-editor {
+      width: min(520px, 100%);
+      background: rgba(255,255,255,.9);
+      border: 1px solid rgba(255,255,255,.7);
+      border-radius: 26px;
+      box-shadow: 0 30px 85px rgba(0,0,0,.24);
+      padding: 22px;
+      backdrop-filter: blur(35px) saturate(180%);
+      -webkit-backdrop-filter: blur(35px) saturate(180%);
+    }
+
+    .color-editor h3 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 950;
+      letter-spacing: -.4px;
+    }
+
+    .color-editor p {
+      margin: 8px 0 16px;
+      color: #6b7280;
+      font-weight: 700;
+    }
+
+    .big-color-input {
+      width: 100%;
+      height: 72px;
+      border: none;
+      border-radius: 17px;
+      background: transparent;
+      cursor: pointer;
+      margin-bottom: 14px;
+    }
+
+    .big-color-input::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    .big-color-input::-webkit-color-swatch {
+      border: none;
+      border-radius: 17px;
+    }
+
+    .scope-options {
+      display: grid;
+      gap: 7px;
+      margin: 12px 0;
+    }
+
+    .scope-option {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 12px 14px;
+      border-radius: 15px;
+      background: rgba(0,0,0,.05);
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .scope-option input {
+      width: auto;
+      accent-color: var(--accent);
+    }
+
+    .mini-color-row {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .mini-color {
+      border: none;
+      height: 38px;
+      border-radius: 14px;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 8px 18px rgba(0,0,0,.12);
+    }
+
+    @media (max-width: 700px) {
+      .class-row-buttons,
+      .class-row-buttons.count-3,
+      .class-row-buttons.count-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+
+    .rule-builder {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+      align-items: end;
+    }
+
+    .rule-builder .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .rule-builder .field.wide {
+      grid-column: span 2;
+    }
+
+    .rule-input {
+      width: 100%;
+      border: 1px solid rgba(0,0,0,.08);
+      background: white;
+      border-radius: 16px;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    .rule-color {
+      width: 100%;
+      height: 46px;
+      border: none;
+      border-radius: 16px;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .rule-color::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    .rule-color::-webkit-color-swatch {
+      border: none;
+      border-radius: 16px;
+    }
+
+    .rules-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .rule-chip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 7px;
+      padding: 10px 12px;
+      border-radius: 15px;
+      background: rgba(0,0,0,.055);
+      font-weight: 850;
+      color: #111827;
+    }
+
+    .rule-chip-left {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .rule-color-dot {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 14px rgba(0,0,0,.12);
+      flex: 0 0 auto;
+    }
+
+    .rule-delete {
+      border: none;
+      border-radius: 999px;
+      padding: 7px 10px;
+      background: rgba(255,59,48,.12);
+      color: #b91c1c;
+      font-weight: 900;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .tiny-note {
+      margin-top: 8px;
+      color: #6b7280;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 760px) {
+      .rule-builder {
+        grid-template-columns: 1fr;
+      }
+      .rule-builder .field.wide {
+        grid-column: auto;
+      }
+    }
+
+
+    .page-wrap.device-auto .stage {
+      width: min(1240px, calc(100vw - 44px));
+      transform: scale(var(--page-scale));
+      transform-origin: center center;
+    }
+
+    /*
+      iPad 模擬不是把整個頁面縮成小框，而是用 4:3 視口重新適配。
+      橫屏按舊 iPad 常見 1024×768 CSS 視口思路排版；
+      直屏按 768×1024 思路排版。
+    */
+    .page-wrap.device-ipad-landscape,
+    .page-wrap.device-ipad-portrait {
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+    }
+
+    .page-wrap.device-ipad-landscape .stage,
+    .page-wrap.device-ipad-portrait .stage {
+      transform: none;
+      transform-origin: center center;
+      display: flex;
+    }
+
+    .page-wrap.device-ipad-landscape .stage {
+      width: min(calc(100vw - 20px), calc((100vh - 20px) * 4 / 3));
+      height: min(calc(100vh - 20px), calc((100vw - 20px) * 3 / 4));
+      aspect-ratio: 4 / 3;
+    }
+
+    .page-wrap.device-ipad-portrait .stage {
+      width: min(calc(100vw - 20px), calc((100vh - 20px) * 3 / 4));
+      height: min(calc(100vh - 20px), calc((100vw - 20px) * 4 / 3));
+      aspect-ratio: 3 / 4;
+    }
+
+    .page-wrap.device-ipad-landscape .app,
+    .page-wrap.device-ipad-portrait .app {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+      outline: 6px solid rgba(17,24,39,.10);
+      outline-offset: 6px;
+      border-radius: 26px;
+    }
+
+    .page-wrap.device-ipad-landscape .header,
+    .page-wrap.device-ipad-portrait .header {
+      flex: 0 0 auto;
+    }
+
+    .page-wrap.device-ipad-landscape .main,
+    .page-wrap.device-ipad-portrait .main {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .page-wrap.device-ipad-landscape .header {
+      padding: 14px 20px 6px;
+    }
+
+    .page-wrap.device-ipad-landscape h1 {
+      font-size: calc(34px * var(--font-scale));
+    }
+
+    .page-wrap.device-ipad-landscape .subtitle {
+      font-size: calc(14px * var(--font-scale));
+      margin-top: 4px;
+    }
+
+    .page-wrap.device-ipad-landscape .main {
+      padding: 8px 18px 14px;
+    }
+
+    .page-wrap.device-ipad-landscape .section-title {
+      font-size: calc(21px * var(--font-scale));
+      margin-bottom: 8px;
+    }
+
+    .page-wrap.device-ipad-landscape .class-group-list {
+      gap: 7px;
+    }
+
+    .page-wrap.device-ipad-landscape .class-row {
+      padding: 8px;
+      border-radius: 22px;
+    }
+
+    .page-wrap.device-ipad-landscape .class-row-buttons {
+      gap: 7px;
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .page-wrap.device-ipad-landscape .class-row-buttons.count-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      justify-content: center;
+    }
+
+    .page-wrap.device-ipad-landscape .class-row-buttons.count-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      justify-content: center;
+    }
+
+    .page-wrap.device-ipad-landscape .class-btn,
+    .page-wrap.device-ipad-landscape .grade-btn {
+      min-height: 56px;
+      font-size: calc(24px * var(--font-scale));
+      border-radius: 17px;
+    }
+
+    .page-wrap.device-ipad-landscape .number-grid {
+      grid-template-columns: repeat(8, 1fr);
+      gap: 8px;
+    }
+
+    .page-wrap.device-ipad-landscape .number-btn {
+      min-height: 44px;
+      font-size: calc(22px * var(--font-scale));
+      border-radius: 15px;
+    }
+
+    .page-wrap.device-ipad-landscape .footer {
+      margin-top: 8px;
+      font-size: calc(13px * var(--font-scale));
+    }
+
+    .page-wrap.device-ipad-landscape .badge {
+      display: none;
+    }
+
+    .page-wrap.device-ipad-portrait .header {
+      padding: 16px 18px 8px;
+    }
+
+    .page-wrap.device-ipad-portrait h1 {
+      font-size: calc(32px * var(--font-scale));
+    }
+
+    .page-wrap.device-ipad-portrait .subtitle {
+      font-size: calc(14px * var(--font-scale));
+      margin-top: 4px;
+    }
+
+    .page-wrap.device-ipad-portrait .main {
+      padding: 10px 18px 16px;
+    }
+
+    .page-wrap.device-ipad-portrait .section-title {
+      font-size: calc(21px * var(--font-scale));
+      margin-bottom: 8px;
+    }
+
+    .page-wrap.device-ipad-portrait .class-group-list {
+      gap: 8px;
+    }
+
+    .page-wrap.device-ipad-portrait .class-row {
+      padding: 8px;
+      border-radius: 22px;
+    }
+
+    .page-wrap.device-ipad-portrait .class-row-buttons {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 7px;
+    }
+
+    .page-wrap.device-ipad-portrait .class-row-buttons.count-3,
+    .page-wrap.device-ipad-portrait .class-row-buttons.count-2 {
+      grid-template-columns: repeat(2, 1fr);
+      justify-content: stretch;
+    }
+
+    .page-wrap.device-ipad-portrait .class-btn,
+    .page-wrap.device-ipad-portrait .grade-btn {
+      min-height: 62px;
+      font-size: calc(24px * var(--font-scale));
+      border-radius: 17px;
+    }
+
+    .page-wrap.device-ipad-portrait .grade-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .page-wrap.device-ipad-portrait .number-grid {
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .page-wrap.device-ipad-portrait .number-btn {
+      min-height: 44px;
+      font-size: calc(21px * var(--font-scale));
+      border-radius: 15px;
+    }
+
+    .page-wrap.device-ipad-portrait .footer {
+      margin-top: 8px;
+      font-size: calc(13px * var(--font-scale));
+      justify-content: center;
+      text-align: center;
+    }
+
+    .page-wrap.device-ipad-portrait .badge {
+      display: none;
+    }
+
+    .page-wrap.device-ipad-landscape::after,
+    .page-wrap.device-ipad-portrait::after {
+      content: "iPad 4:3 重新適配預覽";
+      position: fixed;
+      left: 50%;
+      bottom: 12px;
+      transform: translateX(-50%);
+      padding: 8px 13px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.78);
+      border: 1px solid rgba(255,255,255,.65);
+      color: #374151;
+      font-weight: 900;
+      box-shadow: 0 10px 24px rgba(0,0,0,.12);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      pointer-events: none;
+      z-index: 20;
+    }
+
+
+    .choice-modal-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 45;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(15,23,42,.24);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      pointer-events: auto;
+    }
+
+    .choice-modal-layer.show {
+      display: flex;
+    }
+
+    .choice-modal {
+      width: min(820px, 92vw);
+      max-height: 82vh;
+      overflow: auto;
+      background: rgba(255,255,255,.88);
+      border: 1px solid rgba(255,255,255,.72);
+      border-radius: 34px;
+      box-shadow: 0 34px 92px rgba(0,0,0,.24);
+      backdrop-filter: blur(35px) saturate(180%);
+      -webkit-backdrop-filter: blur(35px) saturate(180%);
+      padding: 24px;
+      animation: choicePop .18s ease-out;
+    }
+
+    @keyframes choicePop {
+      from { transform: scale(.94) translateY(10px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .choice-modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .choice-modal-title {
+      margin: 0;
+      font-size: calc(24px * var(--font-scale));
+      font-weight: 950;
+      letter-spacing: -.4px;
+      color: var(--text);
+    }
+
+    .choice-modal-subtitle {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-weight: 750;
+      font-size: calc(15px * var(--font-scale));
+    }
+
+    .modal-number-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--cols-number), 1fr);
+      gap: 7px;
+    }
+
+    @media (max-width: 760px) {
+      .choice-modal {
+        width: min(720px, 96vw);
+        padding: 18px;
+      }
+
+      .modal-number-grid {
+        grid-template-columns: repeat(5, 1fr);
+      }
+    }
+
+
+    /* 防止少按钮行被拉成超长条：左右留白 + 按钮最大宽度 */
+    .class-row-buttons {
+      gap: var(--button-gap, 10px) !important;
+      justify-items: center;
+    }
+
+    .class-row-buttons .class-btn {
+      width: 100%;
+      max-width: 210px;
+    }
+
+    .page-wrap.device-ipad-landscape .main,
+    .page-wrap.device-ipad-portrait .main {
+      padding-left: clamp(30px, 6vw, 64px) !important;
+      padding-right: clamp(30px, 6vw, 64px) !important;
+    }
+
+    .page-wrap.device-ipad-landscape .class-row,
+    .page-wrap.device-ipad-portrait .class-row {
+      background: rgba(255,255,255,.24);
+      padding-left: 12px !important;
+      padding-right: 12px !important;
+    }
+
+    .page-wrap.device-ipad-landscape .class-row-buttons,
+    .page-wrap.device-ipad-portrait .class-row-buttons {
+      justify-content: center !important;
+      justify-items: center;
+    }
+
+    .page-wrap.device-ipad-landscape .class-row-buttons {
+      grid-template-columns: repeat(4, minmax(120px, 170px)) !important;
+    }
+
+    .page-wrap.device-ipad-landscape .class-row-buttons.count-3 {
+      grid-template-columns: repeat(3, minmax(120px, 170px)) !important;
+    }
+
+    .page-wrap.device-ipad-landscape .class-row-buttons.count-2 {
+      grid-template-columns: repeat(2, minmax(120px, 170px)) !important;
+    }
+
+    .page-wrap.device-ipad-portrait .class-row-buttons {
+      grid-template-columns: repeat(2, minmax(130px, 210px)) !important;
+    }
+
+    .page-wrap.device-ipad-landscape .class-btn,
+    .page-wrap.device-ipad-portrait .class-btn {
+      max-width: 210px;
+    }
+
+    .page-wrap.device-ipad-landscape .grade-grid,
+    .page-wrap.device-ipad-portrait .grade-grid {
+      padding-left: clamp(12px, 3vw, 34px);
+      padding-right: clamp(12px, 3vw, 34px);
+    }
+
+
+    :root {
+      --apple-font: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+      "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+    body, button, input, select, textarea {
+      font-family: var(--apple-font) !important;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    .number-btn, .class-btn, .grade-btn {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .page-wrap.device-ipad-landscape .main,
+    .page-wrap.device-ipad-portrait .main {
+      padding-left: var(--side-padding, 18px) !important;
+      padding-right: var(--side-padding, 18px) !important;
+    }
+
+    @media (max-width: 980px) {
+      .grade-grid,
+      .class-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .number-grid {
+        grid-template-columns: repeat(5, 1fr);
+      }
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page-wrap { padding: 12px; }
+      .stage {
+        width: 100%;
+        transform: none;
+      }
+      .top-tools { top: 10px; left: 10px; right: 10px; }
+      .pill { font-size: 13px; padding: 8px 10px; }
+      .header { padding: 56px 18px 14px; }
+      .main { padding: 16px 18px 26px; }
+      .grade-grid,
+      .class-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .number-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .grade-btn,
+      .class-btn {
+        min-height: 86px;
+      }
+      .number-btn {
+        min-height: 66px;
+      }
+      .footer {
+        justify-content: center;
+        text-align: center;
+      }
+    }
+  
+/* 最終緊湊 iPad 排版 */
+.class-row-buttons {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center;
+  gap: var(--button-gap, 2px) !important;
+  flex-wrap: nowrap;
+}
+
+.class-row-buttons .class-btn {
+  flex: 0 1 auto !important;
+  width: clamp(120px, 16vw, 190px) !important;
+  max-width: 190px !important;
+}
+
+.class-row-buttons.count-3 {
+  gap: 8px !important;
+}
+
+.class-row-buttons.count-2 {
+  gap: 12px !important;
+}
+
+.page-wrap.device-ipad-landscape .class-row,
+.page-wrap.device-ipad-portrait .class-row {
+  padding: 8px 14px !important;
+}
+
+.page-wrap.device-ipad-landscape .class-btn,
+.page-wrap.device-ipad-portrait .class-btn {
+  min-height: 58px !important;
+  font-size: calc(22px * var(--font-scale)) !important;
+}
+
+.page-wrap.device-ipad-landscape .grade-btn,
+.page-wrap.device-ipad-portrait .grade-btn {
+  min-height: 64px !important;
+  font-size: calc(24px * var(--font-scale)) !important;
+}
+
+.page-wrap.device-ipad-landscape .section-title,
+.page-wrap.device-ipad-portrait .section-title {
+  font-size: calc(22px * var(--font-scale)) !important;
+}
+
+.page-wrap.device-ipad-landscape .header h1,
+.page-wrap.device-ipad-portrait .header h1 {
+  font-size: calc(34px * var(--font-scale)) !important;
+}
+
+.page-wrap.device-ipad-landscape .main,
+.page-wrap.device-ipad-portrait .main {
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+}
+
+
+/* =========================================================
+   iPad Preview V2 — controls below are the single source of truth
+   ========================================================= */
+:root {
+  --button-gap: 0px;
+  --layout-class-width: 152px;
+  --layout-class-height: 52px;
+  --layout-number-height: 44px;
+  --layout-row-pad-y: 6px;
+  --layout-row-pad-x: 8px;
+  --layout-main-pad-x: 20px;
+  --layout-main-pad-y: 8px;
+}
+
+/* iPad preview is a real 4:3 viewport; only the UI inside it changes scale. */
+.page-wrap.device-ipad-landscape .stage {
+  width: min(calc(100vw - 24px), calc((100vh - 24px) * 4 / 3)) !important;
+  height: min(calc(100vh - 24px), calc((100vw - 24px) * 3 / 4)) !important;
+  aspect-ratio: 4 / 3 !important;
+  transform: none !important;
+}
+
+.page-wrap.device-ipad-portrait .stage {
+  width: min(calc(100vw - 24px), calc((100vh - 24px) * 3 / 4)) !important;
+  height: min(calc(100vh - 24px), calc((100vw - 24px) * 4 / 3)) !important;
+  aspect-ratio: 3 / 4 !important;
+  transform: none !important;
+}
+
+/* This is what the "overall scale" slider now controls. */
+.page-wrap.device-ipad-landscape .main,
+.page-wrap.device-ipad-portrait .main {
+  padding:
+    var(--layout-main-pad-y)
+    var(--layout-main-pad-x)
+    calc(var(--layout-main-pad-y) + 4px)
+    !important;
+}
+
+.page-wrap.device-ipad-landscape .header,
+.page-wrap.device-ipad-portrait .header {
+  padding:
+    calc(var(--layout-main-pad-y) + 6px)
+    var(--layout-main-pad-x)
+    5px
+    !important;
+}
+
+/* Class rows: no hidden fixed gaps. */
+.class-row-buttons,
+.class-row-buttons.count-2,
+.class-row-buttons.count-3,
+.class-row-buttons.count-4,
+.class-row-buttons.align-center.count-2,
+.class-row-buttons.align-center.count-3,
+.class-row-buttons.align-left.count-2,
+.class-row-buttons.align-left.count-3,
+.class-row-buttons.align-stretch.count-2,
+.class-row-buttons.align-stretch.count-3 {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: var(--button-gap) !important;
+  grid-template-columns: none !important;
+}
+
+.class-row {
+  padding: var(--layout-row-pad-y) var(--layout-row-pad-x) !important;
+}
+
+.class-row-buttons .class-btn {
+  flex: 0 0 var(--layout-class-width) !important;
+  width: var(--layout-class-width) !important;
+  max-width: var(--layout-class-width) !important;
+  min-height: var(--layout-class-height) !important;
+}
+
+/* Respect left/center/stretched alignment without changing the user's gap value. */
+.class-row-buttons.align-left {
+  justify-content: flex-start !important;
+}
+.class-row-buttons.align-center {
+  justify-content: center !important;
+}
+.class-row-buttons.align-stretch .class-btn {
+  flex: 1 1 0 !important;
+  max-width: 220px !important;
+}
+
+/* Number buttons also respond to layout scale. */
+.page-wrap.device-ipad-landscape .number-btn,
+.page-wrap.device-ipad-portrait .number-btn,
+.modal-number-grid .number-btn {
+  min-height: var(--layout-number-height) !important;
+}
+
+/* Compact Apple-like typography; font slider remains independent. */
+.page-wrap.device-ipad-landscape h1,
+.page-wrap.device-ipad-portrait h1 {
+  font-size: calc(31px * var(--font-scale)) !important;
+}
+.page-wrap.device-ipad-landscape .section-title,
+.page-wrap.device-ipad-portrait .section-title {
+  font-size: calc(20px * var(--font-scale)) !important;
+}
+.page-wrap.device-ipad-landscape .class-btn,
+.page-wrap.device-ipad-portrait .class-btn {
+  font-size: calc(21px * var(--font-scale)) !important;
+}
+
+/* Make the gap preview immediate and obvious without adding a forced default gap. */
+.class-row-buttons .class-btn + .class-btn {
+  margin-left: 0 !important;
+}
+
+
+/* 學號固定圓角正方形：不再按 4:3 或寬度拉伸 */
+.number-grid,
+.modal-number-grid {
+  justify-content: center !important;
+  justify-items: center !important;
+}
+
+.number-btn,
+.page-wrap.device-ipad-landscape .number-btn,
+.page-wrap.device-ipad-portrait .number-btn,
+.modal-number-grid .number-btn {
+  width: var(--number-square, 54px) !important;
+  min-width: var(--number-square, 54px) !important;
+  max-width: var(--number-square, 54px) !important;
+  height: var(--number-square, 54px) !important;
+  min-height: var(--number-square, 54px) !important;
+  max-height: var(--number-square, 54px) !important;
+  aspect-ratio: 1 / 1 !important;
+  padding: 0 !important;
+  border-radius: calc(var(--number-square, 54px) * .28) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: calc(20px * var(--font-scale)) !important;
+  line-height: 1 !important;
+}
+
+.page-wrap.device-ipad-landscape .number-grid {
+  grid-template-columns: repeat(8, var(--number-square, 54px)) !important;
+  gap: 8px !important;
+}
+
+.page-wrap.device-ipad-portrait .number-grid {
+  grid-template-columns: repeat(5, var(--number-square, 54px)) !important;
+  gap: 8px !important;
+}
+
+.modal-number-grid {
+  grid-template-columns: repeat(8, var(--number-square, 54px)) !important;
+  gap: 8px !important;
+}
+
+@media (max-width: 760px) {
+  .modal-number-grid {
+    grid-template-columns: repeat(5, var(--number-square, 54px)) !important;
+  }
+}
+
+</style>
+</head>
+<body>
+  <div class="top-tools">
+    <div class="tool-group">
+      <div class="pill"><span class="dot"></span><span id="networkText">預覽模式</span></div>
+    </div>
+    <div class="tool-group">
+      <button class="tool-btn" type="button" onclick="openSettings()">老師設定</button>
+    </div>
+  </div>
+
+  <div class="page-wrap device-ipad-landscape" id="pageWrap">
+    <div class="stage">
+      <main class="app">
+        <section class="header">
+          <div class="badge">📚 圖書館入館記錄</div>
+          <h1>圖書館進館統計</h1>
+          <p class="subtitle" id="subtitle">第一步：請選擇班級</p>
+        </section>
+
+        <section class="main">
+          <div class="step-panel active" id="gradePanel">
+            <h2 class="section-title">選擇年級</h2>
+            <div class="grid grade-grid" id="gradeGrid"></div>
+          </div>
+
+          <div class="step-panel active" id="classPanel">
+            <h2 class="section-title">選擇班級</h2>
+            <div class="grid class-grid" id="classGrid"></div>
+          </div>
+
+          <div class="step-panel" id="numberPanel">
+            <div class="chosen-bar">
+              <div class="chosen-text">已選：<span id="chosenText">--</span></div>
+              <button class="back-btn" type="button" onclick="goBack()">重新選擇</button>
+            </div>
+
+            <h2 class="section-title">選擇學號</h2>
+            <div class="grid number-grid" id="numberGrid"></div>
+          </div>
+
+          <div class="footer">
+            <div class="footer-text" id="footerText">點班級後會彈出學號選擇窗；成功提示顯示 0.5 秒。</div>
+            <button class="fullscreen-btn" id="fullscreenBtn" type="button" onclick="toggleFullscreen()">點我全屏</button>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+
+  <div class="choice-modal-layer" id="choiceModalLayer">
+    <div class="choice-modal">
+      <div class="choice-modal-head">
+        <div>
+          <h2 class="choice-modal-title" id="choiceModalTitle">選擇學號</h2>
+          <p class="choice-modal-subtitle" id="choiceModalSubtitle">請選擇學號</p>
+        </div>
+        <button class="close-btn" type="button" onclick="closeChoiceModal()">×</button>
+      </div>
+      <div class="modal-number-grid" id="modalNumberGrid"></div>
+    </div>
+  </div>
+
+
+  <div class="toast-layer" id="toastLayer">
+    <div class="toast">
+      <div class="toast-icon success" id="toastIcon"></div>
+      <h2 id="toastTitle">提交成功</h2>
+      <p id="toastMessage">已成功記錄。</p>
+    </div>
+  </div>
+
+  <div class="modal-layer" id="settingsLayer">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2 class="modal-title">老師預覽設定</h2>
+          <p class="modal-subtitle">選好後按「生成配置密鑰」，把密鑰複製給學生即可。</p>
+        </div>
+        <button class="close-btn" type="button" onclick="closeSettings()">×</button>
+      </div>
+
+      <div class="settings-grid">
+        <div class="setting-card">
+          <label class="label">點擊流程</label>
+          <div class="segmented">
+            <button class="seg-btn" id="mode2Btn" type="button" onclick="setConfig('mode','2')">兩次點擊</button>
+            <button class="seg-btn" id="mode3Btn" type="button" onclick="setConfig('mode','3')">三次點擊</button>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <label class="label">界面風格</label>
+          <select id="themeSelect" onchange="setConfig('theme', this.value)">
+            <option value="apple">Apple 藍</option>
+            <option value="colorful">彩色按鈕</option>
+            <option value="green">清新綠</option>
+            <option value="purple">紫色系</option>
+            <option value="orange">橙色系</option>
+            <option value="dark">深色玻璃</option>
+          </select>
+        </div>
+
+        <div class="setting-card">
+          <label class="label">iPad 螢幕比例模擬</label>
+          <select id="deviceSelect" onchange="setConfig('device', this.value)">
+            <option value="auto">自適應螢幕</option>
+            <option value="ipad-landscape">iPad 橫屏 4:3（預設）</option>
+            <option value="ipad-portrait">iPad 直屏 4:3</option>
+          </select>
+          <p class="hint-text">學校有 Home 鍵的舊 iPad 多數是 4:3。此模式會按 iPad 比例重新排版，不是把電腦版硬縮小。</p>
+        </div>
+
+        <div class="setting-card">
+          <label class="label">整體比例</label>
+          <div class="range-row">
+            <input id="scaleRange" type="range" min="50" max="110" step="2" oninput="setConfig('scale', Number(this.value) / 100)" />
+            <span class="range-value" id="scaleValue">72%</span>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <label class="label">文字大小</label>
+          <div class="range-row">
+            <input id="fontRange" type="range" min="45" max="125" step="5" oninput="setConfig('fontScale', Number(this.value) / 100)" />
+            <span class="range-value" id="fontValue">78%</span>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <label class="label">按鈕大小</label>
+          <div class="segmented three">
+            <button class="seg-btn" id="sizeSmallBtn" type="button" onclick="setConfig('size','small')">小</button>
+            <button class="seg-btn" id="sizeNormalBtn" type="button" onclick="setConfig('size','normal')">中</button>
+            <button class="seg-btn" id="sizeLargeBtn" type="button" onclick="setConfig('size','large')">大</button>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <label class="label">班級每行數量</label>
+          <div class="range-row">
+            <input id="classColsRange" type="range" min="3" max="8" step="1" oninput="setConfig('classCols', Number(this.value))" />
+            <span class="range-value" id="classColsValue">6</span>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <label class="label">學號每行數量</label>
+          <div class="range-row">
+            <input id="numberColsRange" type="range" min="5" max="10" step="1" oninput="setConfig('numberCols', Number(this.value))" />
+            <span class="range-value" id="numberColsValue">10</span>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <label class="label">班級按鈕行對齊方式</label>
+          <div class="range-row" style="margin-top:12px">
+            <label class="label">按鈕間距（預設最緊湊）</label>
+            <input id="buttonGapRange" type="range" min="0" max="30" value="0" step="1" oninput="setButtonGap(this.value)">
+            <span id="buttonGapValue">0px</span><small style="color:#6b7280;font-weight:700"> 可自行調整</small>
+
+            <label class="label" style="margin-top:12px">左右安全留白大小</label>
+            <input id="sidePaddingRange" type="range" min="0" max="60" value="18" step="2" oninput="setSidePadding(this.value)">
+            <span id="sidePaddingValue">18px</span><small style="color:#6b7280;font-weight:700">（建議 10～25px）</small>
+          </div>
+          <div class="segmented three">
+            <button class="seg-btn" id="alignLeftBtn" type="button" onclick="setConfig('rowAlign','left')">左對齊</button>
+            <button class="seg-btn" id="alignCenterBtn" type="button" onclick="setConfig('rowAlign','center')">居中</button>
+            <button class="seg-btn" id="alignStretchBtn" type="button" onclick="setConfig('rowAlign','stretch')">拉滿</button>
+          </div>
+        </div>
+
+        <div class="setting-card full">
+          <label class="label">年級整體顏色</label>
+          <div class="grade-color-grid" id="gradeColorGrid"></div>
+          <p class="hint-text">例如把「初一」設成藍色，所有初一班級都會用同一套藍色；學號按鈕會跟隨目前選中的年級顏色。</p>
+          <div class="action-row">
+            <button class="secondary-action" type="button" onclick="applyPresetGradeColors()">套用彩色預設</button>
+            <button class="secondary-action" type="button" onclick="applySameGradeColor()">全部套用目前主色</button>
+          </div>
+        </div>
+
+        <div class="setting-card full">
+          <label class="label">自動化批量調色規則</label>
+          <div class="rule-builder">
+            <div class="field">
+              <label class="label">目標</label>
+              <select id="ruleTarget" onchange="updateRuleHint()">
+                <option value="number">學號按鈕</option>
+                <option value="class">班級按鈕</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label class="label">規則類型</label>
+              <select id="ruleType" onchange="updateRuleHint()">
+                <option value="range">範圍</option>
+                <option value="list">指定列表</option>
+                <option value="odd">單數</option>
+                <option value="even">雙數</option>
+                <option value="contains">包含文字</option>
+                <option value="all">全部</option>
+              </select>
+            </div>
+
+            <div class="field wide">
+              <label class="label">規則內容</label>
+              <input class="rule-input" id="ruleValue" placeholder="例如：1-8 或 1,3,5,12 或 初一" />
+            </div>
+
+            <div class="field">
+              <label class="label">顏色</label>
+              <input class="rule-color" id="ruleColor" type="color" value="#007aff" />
+            </div>
+
+            <div class="field wide">
+              <button class="primary-action" type="button" onclick="addColorRule()">新增規則</button>
+            </div>
+
+            <div class="field wide">
+              <button class="secondary-action" type="button" onclick="clearColorRules()">清空規則</button>
+            </div>
+          </div>
+
+          <p class="tiny-note" id="ruleHint">
+            例：學號範圍填 1-8，就會把 1 到 8 號改成指定顏色；也可以用指定列表 1,3,5,12。
+          </p>
+
+          <div class="rules-list" id="rulesList"></div>
+        </div>
+
+        <div class="setting-card full">
+          <label class="label">配置密鑰</label>
+          <textarea id="configKey" placeholder="按「生成配置密鑰」後，這裡會出現一串密鑰。老師把這串複製給你就行。"></textarea>
+          <div class="action-row">
+            <button class="primary-action" type="button" onclick="generateKey()">生成配置密鑰</button>
+            <button class="secondary-action" type="button" onclick="copyKey()">複製密鑰</button>
+            <button class="secondary-action" type="button" onclick="applyKeyFromBox()">套用密鑰</button>
+            <button class="secondary-action" type="button" onclick="resetConfig()">恢復預設</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="color-editor-layer" id="buttonColorLayer">
+    <div class="color-editor">
+      <h3>更改按鈕顏色</h3>
+      <p id="buttonColorTarget">正在選擇按鈕</p>
+
+      <input class="big-color-input" id="singleButtonColorInput" type="color" value="#007aff" />
+
+      <div class="mini-color-row" id="quickColorRow"></div>
+
+      <div class="scope-options">
+        <label class="scope-option">
+          <input type="radio" name="colorScope" value="single" checked />
+          只改這一個按鈕
+        </label>
+        <label class="scope-option">
+          <input type="radio" name="colorScope" value="near5" />
+          改附近 5 個按鈕
+        </label>
+        <label class="scope-option">
+          <input type="radio" name="colorScope" value="near10" />
+          改附近 10 個按鈕
+        </label>
+        <label class="scope-option">
+          <input type="radio" name="colorScope" value="row" />
+          改同一行按鈕
+        </label>
+        <label class="scope-option">
+          <input type="radio" name="colorScope" value="grade" />
+          改同一年級按鈕
+        </label>
+      </div>
+
+      <div class="action-row">
+        <button class="primary-action" type="button" onclick="applyButtonColorEdit()">套用顏色</button>
+        <button class="secondary-action" type="button" onclick="closeButtonColorEditor()">取消</button>
+      </div>
+
+      <p class="hint-text">用法：長按或右鍵按鈕即可開啟。可以只改單個，也可以改附近、同一行或同年級。</p>
+    </div>
+  </div>
+
+
+  <script>
+    const GRADES = ["初一", "初二", "初三", "高一", "高二", "高三"];
+
+    const CLASS_MAP = {
+      "初一": ["初一甲", "初一乙", "初一丙", "初一丁"],
+      "初二": ["初二甲", "初二乙", "初二丙", "初二丁"],
+      "初三": ["初三甲", "初三乙", "初三丙"],
+      "高一": ["高一甲", "高一乙", "高一丙"],
+      "高二": ["高二甲", "高二乙"],
+      "高三": ["高三甲", "高三乙"]
+    };
+
+    const ALL_CLASSES = Object.values(CLASS_MAP).flat();
+
+    const COLOR_PALETTE = [
+      ["#007aff", "#5856d6", "rgba(0,122,255,.24)"],
+      ["#34c759", "#30d158", "rgba(52,199,89,.24)"],
+      ["#ff9500", "#ff9f0a", "rgba(255,149,0,.24)"],
+      ["#ff3b30", "#ff453a", "rgba(255,59,48,.24)"],
+      ["#af52de", "#bf5af2", "rgba(175,82,222,.24)"],
+      ["#5ac8fa", "#64d2ff", "rgba(90,200,250,.24)"],
+      ["#ff2d55", "#ff375f", "rgba(255,45,85,.24)"],
+      ["#0a84ff", "#0066cc", "rgba(10,132,255,.24)"],
+      ["#30b0c7", "#40c8e0", "rgba(48,176,199,.24)"],
+      ["#ffd60a", "#ffb340", "rgba(255,214,10,.24)"]
+    ];
+
+    const THEMES = {
+      apple: {
+        accent: "#007aff", accent2: "#5856d6", bg1: "#f5f7fb", bg2: "#eef4ff",
+        text: "#111827", muted: "#6b7280", glass: "rgba(255,255,255,.72)", border: "rgba(255,255,255,.62)"
+      },
+      colorful: {
+        accent: "#ff2d55", accent2: "#5856d6", bg1: "#fff7ed", bg2: "#eff6ff",
+        text: "#111827", muted: "#6b7280", glass: "rgba(255,255,255,.74)", border: "rgba(255,255,255,.64)"
+      },
+      green: {
+        accent: "#34c759", accent2: "#30b0c7", bg1: "#f0fdf4", bg2: "#ecfeff",
+        text: "#10231a", muted: "#64746b", glass: "rgba(255,255,255,.74)", border: "rgba(255,255,255,.64)"
+      },
+      purple: {
+        accent: "#af52de", accent2: "#5856d6", bg1: "#faf5ff", bg2: "#eef2ff",
+        text: "#1f1930", muted: "#6d607b", glass: "rgba(255,255,255,.74)", border: "rgba(255,255,255,.64)"
+      },
+      orange: {
+        accent: "#ff9500", accent2: "#ff3b30", bg1: "#fff7ed", bg2: "#fff1f2",
+        text: "#2b1708", muted: "#7c6658", glass: "rgba(255,255,255,.74)", border: "rgba(255,255,255,.64)"
+      },
+      dark: {
+        accent: "#0a84ff", accent2: "#bf5af2", bg1: "#111827", bg2: "#020617",
+        text: "#f9fafb", muted: "#cbd5e1", glass: "rgba(15,23,42,.72)", border: "rgba(255,255,255,.16)"
+      }
+    };
+
+    let config = {
+      mode: "2",
+      theme: "apple",
+      device: "ipad-landscape",
+      scale: 0.72,
+      fontScale: 0.78,
+      size: "normal",
+      classCols: 6,
+      numberCols: 10,
+      rowAlign: "center",
+      sidePadding: 18,
+      buttonGap: 0,
+      gradeColors: {
+        "初一": "#007aff",
+        "初二": "#34c759",
+        "初三": "#ff9500",
+        "高一": "#af52de",
+        "高二": "#ff2d55",
+        "高三": "#30b0c7"
+      },
+      buttonColors: {},
+      colorRules: []
+    };
+
+    let currentGrade = "";
+    let currentClass = "";
+    let busy = false;
+    let toastTimer = null;
+
+    const pageWrap = document.getElementById("pageWrap");
+    const choiceModalLayer = document.getElementById("choiceModalLayer");
+    const choiceModalTitle = document.getElementById("choiceModalTitle");
+    const choiceModalSubtitle = document.getElementById("choiceModalSubtitle");
+    const modalNumberGrid = document.getElementById("modalNumberGrid");
+    const gradePanel = document.getElementById("gradePanel");
+    const classPanel = document.getElementById("classPanel");
+    const numberPanel = document.getElementById("numberPanel");
+    const gradeGrid = document.getElementById("gradeGrid");
+    const classGrid = document.getElementById("classGrid");
+    const numberGrid = document.getElementById("numberGrid");
+    const subtitle = document.getElementById("subtitle");
+    const chosenText = document.getElementById("chosenText");
+    const footerText = document.getElementById("footerText");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
+
+    const toastLayer = document.getElementById("toastLayer");
+    const toastIcon = document.getElementById("toastIcon");
+    const toastTitle = document.getElementById("toastTitle");
+    const toastMessage = document.getElementById("toastMessage");
+
+    const settingsLayer = document.getElementById("settingsLayer");
+    const configKey = document.getElementById("configKey");
+    const buttonColorLayer = document.getElementById("buttonColorLayer");
+    const buttonColorTarget = document.getElementById("buttonColorTarget");
+    const singleButtonColorInput = document.getElementById("singleButtonColorInput");
+    const quickColorRow = document.getElementById("quickColorRow");
+    const ruleTarget = document.getElementById("ruleTarget");
+    const ruleType = document.getElementById("ruleType");
+    const ruleValue = document.getElementById("ruleValue");
+    const ruleColor = document.getElementById("ruleColor");
+    const ruleHint = document.getElementById("ruleHint");
+    const rulesList = document.getElementById("rulesList");
+
+    let editingButtonKey = "";
+    let editingButtonGrade = "";
+    let editingButtonLabel = "";
+    let editingButtonKind = "";
+    let editingButtonIndex = 0;
+    let editingButtonRowKeys = [];
+    let editingPreviewButton = null;
+    let editingOriginalColor = "";
+
+    const gradeColorGrid = document.getElementById("gradeColorGrid");
+
+    function hexToRgb(hex) {
+      const clean = String(hex || "#007aff").replace("#", "");
+      const full = clean.length === 3 ? clean.split("").map(x => x + x).join("") : clean;
+      const num = parseInt(full, 16);
+      return {
+        r: (num >> 16) & 255,
+        g: (num >> 8) & 255,
+        b: num & 255
+      };
+    }
+
+    function rgbToHex(r, g, b) {
+      const toHex = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+      return "#" + toHex(r) + toHex(g) + toHex(b);
+    }
+
+    function adjustHex(hex, amount) {
+      const { r, g, b } = hexToRgb(hex);
+      return rgbToHex(r + amount, g + amount, b + amount);
+    }
+
+    function shadowFromHex(hex, alpha = 0.24) {
+      const { r, g, b } = hexToRgb(hex);
+      return "rgba(" + r + "," + g + "," + b + "," + alpha + ")";
+    }
+
+    function getGradeFromClass(className) {
+      return String(className || "").slice(0, 2);
+    }
+
+    function getExplicitButtonColor(key) {
+      return (config.buttonColors && config.buttonColors[key]) || "";
+    }
+
+    function getButtonColor(key, fallbackGrade) {
+      return getExplicitButtonColor(key) || config.gradeColors[fallbackGrade] || "#007aff";
+    }
+
+    function parseList(value) {
+      return String(value || "")
+        .split(",")
+        .map(x => x.trim())
+        .filter(Boolean);
+    }
+
+    function parseRange(value) {
+      const m = String(value || "").match(/^\s*(\d+)\s*[-~到至]\s*(\d+)\s*$/);
+      if (!m) return null;
+      const a = Number(m[1]);
+      const b = Number(m[2]);
+      return [Math.min(a, b), Math.max(a, b)];
+    }
+
+    function ruleMatches(rule, target, label) {
+      if (!rule || rule.target !== target) return false;
+
+      const text = String(label);
+      const num = Number(text.replace(/\D/g, ""));
+
+      if (rule.type === "all") return true;
+
+      if (target === "number") {
+        if (rule.type === "range") {
+          const r = parseRange(rule.value);
+          if (!r || Number.isNaN(num)) return false;
+          return num >= r[0] && num <= r[1];
+        }
+
+        if (rule.type === "list") {
+          return parseList(rule.value).includes(String(num));
+        }
+
+        if (rule.type === "odd") {
+          return !Number.isNaN(num) && num % 2 === 1;
+        }
+
+        if (rule.type === "even") {
+          return !Number.isNaN(num) && num % 2 === 0;
+        }
+      }
+
+      if (rule.type === "contains") {
+        return text.includes(String(rule.value || ""));
+      }
+
+      if (target === "class" && rule.type === "list") {
+        return parseList(rule.value).includes(text);
+      }
+
+      return false;
+    }
+
+    function getRuleColor(target, label) {
+      const rules = config.colorRules || [];
+      // 後加入的規則優先，這樣老師可以覆蓋之前的規則
+      for (let i = rules.length - 1; i >= 0; i--) {
+        if (ruleMatches(rules[i], target, label)) {
+          return rules[i].color;
+        }
+      }
+      return "";
+    }
+
+    function describeRule(rule) {
+      const target = rule.target === "number" ? "學號" : "班級";
+      const typeMap = {
+        range: "範圍",
+        list: "指定列表",
+        odd: "單數",
+        even: "雙數",
+        contains: "包含文字",
+        all: "全部"
+      };
+      const content = rule.type === "all" || rule.type === "odd" || rule.type === "even"
+        ? ""
+        : "：" + (rule.value || "");
+      return target + " / " + (typeMap[rule.type] || rule.type) + content;
+    }
+
+    function renderRulesList() {
+      if (!rulesList) return;
+      rulesList.innerHTML = "";
+
+      const rules = config.colorRules || [];
+      if (!rules.length) {
+        const empty = document.createElement("div");
+        empty.className = "hint-text";
+        empty.textContent = "暫無規則。可以新增例如「學號 範圍 1-8」或「班級 包含文字 初一」。";
+        rulesList.appendChild(empty);
+        return;
+      }
+
+      rules.forEach((rule, index) => {
+        const chip = document.createElement("div");
+        chip.className = "rule-chip";
+
+        const left = document.createElement("div");
+        left.className = "rule-chip-left";
+
+        const dot = document.createElement("span");
+        dot.className = "rule-color-dot";
+        dot.style.background = rule.color;
+
+        const text = document.createElement("span");
+        text.textContent = describeRule(rule);
+
+        const del = document.createElement("button");
+        del.className = "rule-delete";
+        del.type = "button";
+        del.textContent = "刪除";
+        del.onclick = () => {
+          config.colorRules.splice(index, 1);
+          applyConfig();
+          generateKey();
+        };
+
+        left.appendChild(dot);
+        left.appendChild(text);
+        chip.appendChild(left);
+        chip.appendChild(del);
+        rulesList.appendChild(chip);
+      });
+    }
+
+    function updateRuleHint() {
+      const target = ruleTarget.value;
+      const type = ruleType.value;
+
+      const examples = {
+        "number:range": "例：1-8、9-16、21-30。範圍可以自由填，不固定比例。",
+        "number:list": "例：1,3,5,12。只改指定學號。",
+        "number:odd": "會套用到所有單數學號：1、3、5……",
+        "number:even": "會套用到所有雙數學號：2、4、6……",
+        "number:all": "會套用到全部 1–40 學號。",
+        "class:contains": "例：初一、高二、甲。包含這些文字的班級會套用顏色。",
+        "class:list": "例：初一甲,初一乙,高三乙。只改指定班級。",
+        "class:all": "會套用到全部班級按鈕。"
+      };
+
+      ruleHint.textContent = examples[target + ":" + type] || "這個組合比較少用，可以換成範圍、列表或包含文字。";
+      const needsValue = !(type === "all" || type === "odd" || type === "even");
+      ruleValue.disabled = !needsValue;
+      ruleValue.placeholder = target === "number" ? "例如：1-8 或 1,3,5,12" : "例如：初一 或 初一甲,初一乙";
+    }
+
+    function addColorRule() {
+      const rule = {
+        target: ruleTarget.value,
+        type: ruleType.value,
+        value: ruleValue.disabled ? "" : ruleValue.value.trim(),
+        color: ruleColor.value
+      };
+
+      if (!rule.value && !(rule.type === "all" || rule.type === "odd" || rule.type === "even")) {
+        showToast("error", "規則不完整", "請先填寫規則內容。", 1200);
+        return;
+      }
+
+      config.colorRules = config.colorRules || [];
+      config.colorRules.push(rule);
+      ruleValue.value = "";
+      applyConfig();
+      generateKey();
+    }
+
+    function clearColorRules() {
+      config.colorRules = [];
+      applyConfig();
+      generateKey();
+    }
+
+    function openButtonColorEditor(key, grade, label, kind = "class", index = 0, rowKeys = [], buttonNode = null) {
+      editingButtonKey = key;
+      editingButtonGrade = grade;
+      editingButtonLabel = label;
+      editingButtonKind = kind;
+      editingButtonIndex = index;
+      editingButtonRowKeys = rowKeys || [];
+      editingPreviewButton = buttonNode;
+      editingOriginalColor = getButtonColor(key, grade);
+
+      buttonColorTarget.textContent = "目前按鈕：" + label + "（只會先預覽目前選中的範圍）";
+      singleButtonColorInput.value = editingOriginalColor;
+      document.querySelector('input[name="colorScope"][value="single"]').checked = true;
+
+      document.querySelectorAll('input[name="colorScope"]').forEach((input) => {
+        const wrap = input.closest(".scope-option");
+        wrap.style.display = "";
+        if (editingButtonKind !== "number" && (input.value === "near5" || input.value === "near10")) {
+          wrap.style.display = "none";
+        }
+      });
+
+      previewColorScope(singleButtonColorInput.value);
+      buttonColorLayer.classList.add("show");
+    }
+
+    function closeButtonColorEditor() {
+      buttonColorLayer.classList.remove("show");
+      editingPreviewButton = null;
+      editingOriginalColor = "";
+      applyConfig();
+      if (currentClass && choiceModalLayer.classList.contains("show")) {
+        renderModalNumberButtons();
+      }
+    }
+
+    function getNearbyNumberKeys(centerNumber, count) {
+      const halfLeft = Math.floor((count - 1) / 2);
+      let start = centerNumber - halfLeft;
+      let end = start + count - 1;
+
+      if (start < 1) {
+        end += 1 - start;
+        start = 1;
+      }
+
+      if (end > 40) {
+        start -= end - 40;
+        end = 40;
+      }
+
+      start = Math.max(1, start);
+      const keys = [];
+      for (let n = start; n <= end; n++) keys.push("學號:" + n);
+      return keys;
+    }
+
+    function setButtonColorKeys(keys, color) {
+      config.buttonColors = config.buttonColors || {};
+      keys.forEach((key) => {
+        config.buttonColors[key] = color;
+      });
+    }
+
+    function getCurrentColorScope() {
+      const selected = document.querySelector('input[name="colorScope"]:checked');
+      return selected ? selected.value : "single";
+    }
+
+    function getScopeKeys(scope) {
+      if (scope === "row") {
+        return editingButtonRowKeys.length ? editingButtonRowKeys.slice() : [editingButtonKey];
+      }
+      if (scope === "near5") {
+        return getNearbyNumberKeys(editingButtonIndex, 5);
+      }
+      if (scope === "near10") {
+        return getNearbyNumberKeys(editingButtonIndex, 10);
+      }
+      if (scope === "grade") {
+        if (editingButtonKind === "number") {
+          return Array.from({length: 40}, (_, i) => "學號:" + (i + 1));
+        }
+        if (editingButtonKind === "class") {
+          return ALL_CLASSES
+            .filter(name => getGradeFromClass(name) === editingButtonGrade)
+            .map(name => "班級:" + name);
+        }
+        return ["年級:" + editingButtonGrade];
+      }
+      return [editingButtonKey];
+    }
+
+    function findButtonByKey(key) {
+      return document.querySelector('[data-color-key="' + CSS.escape(key) + '"]');
+    }
+
+    function previewColorScope(color) {
+      // Re-render from saved config first, so previous previews never leak into unrelated buttons.
+      refreshFlow();
+      if (currentClass && choiceModalLayer.classList.contains("show")) {
+        renderModalNumberButtons();
+      }
+
+      const scope = getCurrentColorScope();
+      const keys = getScopeKeys(scope);
+
+      keys.forEach((key) => {
+        const btn = findButtonByKey(key);
+        if (btn) applySolidButtonColor(btn, color);
+      });
+    }
+
+    function applyButtonColorEdit() {
+      const color = singleButtonColorInput.value;
+      const scope = getCurrentColorScope();
+      config.buttonColors = config.buttonColors || {};
+
+      const keys = getScopeKeys(scope);
+
+      if (scope === "grade" && editingButtonKind === "grade") {
+        // Only an actual grade button edits the grade default.
+        config.gradeColors[editingButtonGrade] = color;
+      } else {
+        // Every other scope writes explicit button overrides only.
+        // This prevents unrelated grades/classes from inheriting the same color.
+        keys.forEach((key) => {
+          config.buttonColors[key] = color;
+        });
+      }
+
+      buttonColorLayer.classList.remove("show");
+      editingPreviewButton = null;
+      editingOriginalColor = "";
+
+      applyConfig();
+      if (currentClass && choiceModalLayer.classList.contains("show")) {
+        renderModalNumberButtons();
+      }
+      generateKey();
+    }
+
+    function attachColorEditor(button, key, grade, label, kind = "class", index = 0, rowKeys = []) {
+      let pressTimer = null;
+      button.dataset.colorKey = key;
+
+      button.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        openButtonColorEditor(key, grade, label, kind, index, rowKeys, button);
+      });
+
+      button.addEventListener("pointerdown", () => {
+        pressTimer = setTimeout(() => {
+          openButtonColorEditor(key, grade, label, kind, index, rowKeys, button);
+        }, 650);
+      });
+
+      ["pointerup", "pointerleave", "pointercancel"].forEach((eventName) => {
+        button.addEventListener(eventName, () => {
+          clearTimeout(pressTimer);
+        });
+      });
+    }
+
+
+    singleButtonColorInput.addEventListener("input", () => {
+      previewColorScope(singleButtonColorInput.value);
+    });
+
+    document.querySelectorAll('input[name="colorScope"]').forEach((input) => {
+      input.addEventListener("change", () => {
+        previewColorScope(singleButtonColorInput.value);
+      });
+    });
+
+    function renderQuickColors() {
+      quickColorRow.innerHTML = "";
+      COLOR_PALETTE.slice(0, 12).forEach((item) => {
+        const btn = document.createElement("button");
+        btn.className = "mini-color";
+        btn.type = "button";
+        btn.style.background = "linear-gradient(135deg," + item[0] + "," + item[1] + ")";
+        btn.onclick = () => {
+          singleButtonColorInput.value = item[0];
+          previewColorScope(item[0]);
+        };
+        quickColorRow.appendChild(btn);
+      });
+    }
+
+    function applySolidButtonColor(button, hex) {
+      const base = hex || "#007aff";
+      button.style.setProperty("--btn-c1", adjustHex(base, 18));
+      button.style.setProperty("--btn-c2", adjustHex(base, -18));
+      button.style.setProperty("--btn-shadow", shadowFromHex(base, 0.25));
+    }
+
+    function applyButtonColor(button, index) {
+      const color = COLOR_PALETTE[index % COLOR_PALETTE.length];
+      button.style.setProperty("--btn-c1", color[0]);
+      button.style.setProperty("--btn-c2", color[1]);
+      button.style.setProperty("--btn-shadow", color[2]);
+    }
+
+    function renderGradeButtons() {
+      gradeGrid.innerHTML = "";
+      GRADES.forEach((grade, index) => {
+        const btn = document.createElement("button");
+        btn.className = "big-btn grade-btn";
+        btn.type = "button";
+        btn.textContent = grade;
+        applySolidButtonColor(btn, getButtonColor("年級:" + grade, grade));
+        attachColorEditor(btn, "年級:" + grade, grade, grade, "grade", index, ["年級:" + grade]);
+        btn.onclick = () => chooseGrade(grade);
+        gradeGrid.appendChild(btn);
+      });
+    }
+
+    function groupClassesByGrade(list) {
+      const groups = {};
+      list.forEach((className) => {
+        const grade = getGradeFromClass(className);
+        if (!groups[grade]) groups[grade] = [];
+        groups[grade].push(className);
+      });
+      return groups;
+    }
+
+    function renderClassButtons(list = ALL_CLASSES) {
+      classGrid.innerHTML = "";
+      classGrid.className = "class-group-list";
+
+      const groups = groupClassesByGrade(list);
+      const gradeOrder = GRADES.filter((grade) => groups[grade] && groups[grade].length);
+
+      gradeOrder.forEach((grade) => {
+        const row = document.createElement("div");
+        row.className = "class-row";
+
+        const rowTitle = document.createElement("div");
+        rowTitle.className = "class-row-title";
+        rowTitle.textContent = grade;
+        const rowColor = config.gradeColors[grade] || "#007aff";
+        rowTitle.style.setProperty("--row-c1", adjustHex(rowColor, 18));
+        rowTitle.style.setProperty("--row-c2", adjustHex(rowColor, -18));
+        rowTitle.style.setProperty("--row-shadow", shadowFromHex(rowColor, .25));
+
+        const buttons = document.createElement("div");
+        buttons.className = "class-row-buttons count-" + groups[grade].length + " align-" + (config.rowAlign || "center");
+
+        const rowKeys = groups[grade].map((name) => "班級:" + name);
+
+        groups[grade].forEach((className, classIndex) => {
+          const btn = document.createElement("button");
+          btn.className = "big-btn class-btn";
+          btn.type = "button";
+          btn.textContent = className;
+          const explicitColorForClass = getExplicitButtonColor("班級:" + className);
+          const ruleColorForClass = getRuleColor("class", className);
+          applySolidButtonColor(btn, explicitColorForClass || ruleColorForClass || config.gradeColors[grade] || "#007aff");
+          attachColorEditor(btn, "班級:" + className, grade, className, "class", classIndex + 1, rowKeys);
+          btn.onclick = () => chooseClass(className);
+          buttons.appendChild(btn);
+        });
+
+        row.appendChild(buttons);
+        classGrid.appendChild(row);
+      });
+    }
+
+    function renderNumberButtons() {
+      numberGrid.innerHTML = "";
+      for (let i = 1; i <= 40; i++) {
+        const btn = document.createElement("button");
+        btn.className = "big-btn number-btn";
+        btn.type = "button";
+        btn.textContent = String(i);
+        applyButtonColor(btn, i + 4);
+        attachColorEditor(btn, "學號:" + i, currentGrade || "初一", i + " 號", "number", i, Array.from({length: 40}, (_, idx) => "學號:" + (idx + 1)));
+        btn.onclick = () => submitPreview(i);
+        numberGrid.appendChild(btn);
+      }
+    }
+
+    function renderModalNumberButtons() {
+      modalNumberGrid.innerHTML = "";
+      const grade = getGradeFromClass(currentClass) || currentGrade || "初一";
+      const base = config.gradeColors[grade] || "#007aff";
+
+      for (let i = 1; i <= 40; i++) {
+        const btn = document.createElement("button");
+        btn.className = "big-btn number-btn";
+        btn.type = "button";
+        btn.textContent = String(i);
+
+        const ruleColorForNumber = getRuleColor("number", String(i));
+        const offset = ((i - 1) % 4) * 12 - 18;
+        const c = (config.buttonColors && config.buttonColors["學號:" + i])
+          || ruleColorForNumber
+          || adjustHex(base, offset);
+
+        applySolidButtonColor(btn, c);
+        attachColorEditor(btn, "學號:" + i, grade, i + " 號", "number", i, Array.from({length: 40}, (_, idx) => "學號:" + (idx + 1)));
+        btn.onclick = () => submitPreview(i);
+        modalNumberGrid.appendChild(btn);
+      }
+    }
+
+    function recolorNumberButtonsForClass(className) {
+      const grade = getGradeFromClass(className);
+      const base = config.gradeColors[grade] || "#007aff";
+      document.querySelectorAll(".number-btn").forEach((btn, index) => {
+        const offset = (index % 4) * 12 - 18;
+        const label = String(index + 1);
+        const ruleColorForNumber = getRuleColor("number", label);
+        const c = (config.buttonColors && config.buttonColors["學號:" + (index + 1)])
+          || ruleColorForNumber
+          || adjustHex(base, offset);
+        applySolidButtonColor(btn, c);
+      });
+    }
+
+    function showPanel(name) {
+      gradePanel.classList.remove("active");
+      classPanel.classList.remove("active");
+      numberPanel.classList.remove("active");
+
+      if (name === "grade") gradePanel.classList.add("active");
+      if (name === "class") classPanel.classList.add("active");
+      if (name === "number") numberPanel.classList.add("active");
+    }
+
+    function refreshFlow() {
+      currentGrade = "";
+      currentClass = "";
+
+      if (config.mode === "3") {
+        subtitle.textContent = "第一步：請選擇年級";
+        footerText.textContent = "先點年級，再點班級，最後點學號；成功提示顯示 0.5 秒。";
+        showPanel("grade");
+      } else {
+        subtitle.textContent = "第一步：請選擇班級";
+        footerText.textContent = "點班級後會彈出學號選擇窗；成功提示顯示 0.5 秒。";
+        renderClassButtons(ALL_CLASSES);
+        showPanel("class");
+      }
+    }
+
+    function chooseGrade(grade) {
+      if (busy) return;
+      currentGrade = grade;
+      renderClassButtons(CLASS_MAP[grade] || []);
+      subtitle.textContent = "第二步：請選擇 " + grade + " 的班級";
+      showPanel("class");
+    }
+
+    function chooseClass(className) {
+      if (busy) return;
+      currentClass = className;
+      chosenText.textContent = config.mode === "3" ? (currentGrade + "　" + className) : className;
+      subtitle.textContent = (config.mode === "3" ? "第三步" : "第二步") + "：請選擇學號";
+      recolorNumberButtonsForClass(className);
+      openNumberChoiceModal(className);
+    }
+
+    function openNumberChoiceModal(className) {
+      choiceModalTitle.textContent = "選擇學號";
+      choiceModalSubtitle.textContent = "已選班級：" + className + "，請點選學號";
+      renderModalNumberButtons();
+      choiceModalLayer.classList.add("show");
+    }
+
+    function closeChoiceModal() {
+      choiceModalLayer.classList.remove("show");
+    }
+
+    function goBack() {
+      if (busy) return;
+
+      if (config.mode === "3") {
+        subtitle.textContent = "第一步：請選擇年級";
+        currentGrade = "";
+        currentClass = "";
+        showPanel("grade");
+      } else {
+        subtitle.textContent = "第一步：請選擇班級";
+        currentClass = "";
+        renderClassButtons(ALL_CLASSES);
+        showPanel("class");
+      }
+    }
+
+    function setAllButtonsDisabled(disabled) {
+      document.querySelectorAll(".big-btn, .back-btn").forEach(btn => btn.disabled = disabled);
+    }
+
+    function showToast(type, title, message, ms = 500, afterHide = null) {
+      clearTimeout(toastTimer);
+      toastIcon.className = "toast-icon " + type;
+
+      if (type === "success") {
+        toastIcon.innerHTML = `
+          <svg class="check-svg" viewBox="0 0 64 64" aria-hidden="true">
+            <path d="M18 33.5 L27.5 43 L47 21"></path>
+          </svg>
+        `;
+      } else {
+        toastIcon.textContent = "!";
+      }
+
+      toastTitle.textContent = title;
+      toastMessage.innerHTML = message;
+      toastLayer.classList.add("show");
+
+      toastTimer = setTimeout(() => {
+        toastLayer.classList.remove("show");
+        if (typeof afterHide === "function") afterHide();
+      }, ms);
+    }
+
+    function submitPreview(number) {
+      if (busy) return;
+      if (!currentClass) {
+        showToast("error", "請先選擇", "請先完成前面的選擇。", 1200);
+        return;
+      }
+
+      busy = true;
+      setAllButtonsDisabled(true);
+
+      const finalText = currentClass + "　" + number + " 號";
+      showToast("success", "預覽模式提交", "<span>" + finalText + "</span> 預覽成功，正式版才會寫入表單。<br><span class=\"preview-mode-tag\">Preview Only</span>", 900, () => {
+        busy = false;
+        setAllButtonsDisabled(false);
+        closeChoiceModal();
+        refreshFlow();
+      });
+    }
+
+    function renderGradeColorControls() {
+      if (!gradeColorGrid) return;
+      gradeColorGrid.innerHTML = "";
+
+      GRADES.forEach((grade) => {
+        const item = document.createElement("div");
+        item.className = "grade-color-item";
+
+        const label = document.createElement("div");
+        label.className = "grade-color-label";
+        label.innerHTML = "<span>" + grade + "</span><span>" + (config.gradeColors[grade] || "#007aff") + "</span>";
+
+        const input = document.createElement("input");
+        input.className = "grade-color-input";
+        input.type = "color";
+        input.value = config.gradeColors[grade] || "#007aff";
+        input.oninput = () => {
+          config.gradeColors[grade] = input.value;
+          label.innerHTML = "<span>" + grade + "</span><span>" + input.value + "</span>";
+          applyConfig(false);
+        };
+
+        item.appendChild(label);
+        item.appendChild(input);
+        gradeColorGrid.appendChild(item);
+      });
+    }
+
+    function applyPresetGradeColors() {
+      config.gradeColors = {
+        "初一": "#007aff",
+        "初二": "#34c759",
+        "初三": "#ff9500",
+        "高一": "#af52de",
+        "高二": "#ff2d55",
+        "高三": "#30b0c7"
+      };
+      applyConfig();
+      generateKey();
+    }
+
+    function applySameGradeColor() {
+      const theme = THEMES[config.theme] || THEMES.apple;
+      const color = theme.accent || "#007aff";
+      GRADES.forEach((grade) => {
+        config.gradeColors[grade] = color;
+      });
+      applyConfig();
+      generateKey();
+    }
+
+    function applyTheme() {
+      const theme = THEMES[config.theme] || THEMES.apple;
+      Object.entries(theme).forEach(([key, value]) => {
+        document.documentElement.style.setProperty("--" + key, value);
+      });
+    }
+
+    function applySize() {
+      const sizes = {
+        small: ["86px", "62px"],
+        normal: ["104px", "74px"],
+        large: ["124px", "88px"]
+      };
+      const chosen = sizes[config.size] || sizes.normal;
+      document.documentElement.style.setProperty("--button-min", chosen[0]);
+      document.documentElement.style.setProperty("--number-min", chosen[1]);
+    }
+
+
+
+    function setButtonGap(value) {
+      config.buttonGap = Number(value);
+      document.documentElement.style.setProperty("--button-gap", config.buttonGap + "px");
+      const el = document.getElementById("buttonGapValue");
+      if (el) el.textContent = config.buttonGap + "px";
+      generateKey();
+    }
+
+    function setSidePadding(value) {
+      config.sidePadding = Number(value);
+      document.documentElement.style.setProperty("--side-padding", value + "px");
+      const el = document.getElementById("sidePaddingValue");
+      if (el) el.textContent = value + "px";
+      generateKey();
+    }
+
+    function applyConfig(shouldRefreshControls = true) {
+      pageWrap.classList.remove("device-auto", "device-ipad-landscape", "device-ipad-portrait");
+      pageWrap.classList.add("device-" + (config.device || "ipad-landscape"));
+
+      const root = document.documentElement;
+      const scale = Number(config.scale || 0.72);
+      const factor = scale / 0.72;
+
+      root.style.setProperty("--page-scale", String(scale));
+      root.style.setProperty("--font-scale", String(config.fontScale || 0.78));
+      root.style.setProperty("--cols-class", String(config.classCols));
+      root.style.setProperty("--cols-number", String(config.numberCols));
+      root.style.setProperty("--button-gap", Number(config.buttonGap || 0) + "px");
+
+      /* In iPad mode the 4:3 frame stays fixed. The slider scales actual UI geometry. */
+      root.style.setProperty("--layout-class-width", Math.round(152 * factor) + "px");
+      root.style.setProperty("--layout-class-height", Math.round(52 * factor) + "px");
+      root.style.setProperty("--layout-number-height", Math.round(44 * factor) + "px");
+      root.style.setProperty("--number-square", Math.max(38, Math.round(54 * factor)) + "px");
+      root.style.setProperty("--layout-row-pad-y", Math.max(2, Math.round(6 * factor)) + "px");
+      root.style.setProperty("--layout-row-pad-x", Math.max(4, Math.round(8 * factor)) + "px");
+      root.style.setProperty("--layout-main-pad-x", Math.max(10, Math.round(20 * factor)) + "px");
+      root.style.setProperty("--layout-main-pad-y", Math.max(4, Math.round(8 * factor)) + "px");
+      applyTheme();
+      applySize();
+      updateSettingsUI();
+      if (shouldRefreshControls) renderGradeColorControls();
+      renderRulesList();
+      updateRuleHint();
+      refreshFlow();
+    }
+
+    function updateSettingsUI() {
+      document.querySelectorAll(".seg-btn").forEach(btn => btn.classList.remove("active"));
+      document.getElementById(config.mode === "2" ? "mode2Btn" : "mode3Btn").classList.add("active");
+      document.getElementById("size" + cap(config.size) + "Btn").classList.add("active");
+      document.getElementById("align" + cap(config.rowAlign || "center") + "Btn").classList.add("active");
+
+      document.getElementById("themeSelect").value = config.theme;
+      document.getElementById("deviceSelect").value = config.device || "ipad-landscape";
+      document.getElementById("scaleRange").value = Math.round(config.scale * 100);
+      document.getElementById("scaleValue").textContent = Math.round(config.scale * 100) + "%";
+      document.getElementById("fontRange").value = Math.round((config.fontScale || 1) * 100);
+      document.getElementById("fontValue").textContent = Math.round((config.fontScale || 1) * 100) + "%";
+      const gapRange = document.getElementById("buttonGapRange");
+      const gapValue = document.getElementById("buttonGapValue");
+      if (gapRange) gapRange.value = Number(config.buttonGap || 0);
+      if (gapValue) gapValue.textContent = Number(config.buttonGap || 0) + "px";
+      document.getElementById("classColsRange").value = config.classCols;
+      document.getElementById("classColsValue").textContent = config.classCols;
+      document.getElementById("numberColsRange").value = config.numberCols;
+      document.getElementById("numberColsValue").textContent = config.numberCols;
+    }
+
+    function cap(s) {
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    function setConfig(key, value) {
+      config[key] = value;
+      applyConfig();
+    }
+
+    function generateKey() {
+      const payload = JSON.stringify(config);
+      const encoded = btoa(unescape(encodeURIComponent(payload)));
+      configKey.value = "LIBCFG1." + encoded;
+    }
+
+    async function copyKey() {
+      if (!configKey.value.trim()) generateKey();
+
+      try {
+        await navigator.clipboard.writeText(configKey.value);
+        showToast("success", "已複製", "配置密鑰已複製。", 700);
+      } catch {
+        configKey.select();
+        document.execCommand("copy");
+        showToast("success", "已複製", "配置密鑰已複製。", 700);
+      }
+    }
+
+    function applyKeyFromBox() {
+      const raw = configKey.value.trim();
+      if (!raw.startsWith("LIBCFG1.")) {
+        showToast("error", "密鑰格式錯誤", "請貼上 LIBCFG1 開頭的配置密鑰。", 1200);
+        return;
+      }
+
+      try {
+        const encoded = raw.replace("LIBCFG1.", "");
+        const obj = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+        config = {
+          ...config,
+          ...obj,
+          device: obj.device || config.device || "ipad-landscape",
+          fontScale: obj.fontScale || config.fontScale || 1,
+          rowAlign: obj.rowAlign || config.rowAlign || "center",
+          gradeColors: {
+            "初一": "#007aff",
+            "初二": "#34c759",
+            "初三": "#ff9500",
+            "高一": "#af52de",
+            "高二": "#ff2d55",
+            "高三": "#30b0c7",
+            ...(obj.gradeColors || {})
+          },
+          buttonColors: obj.buttonColors || {},
+          colorRules: obj.colorRules || []
+        };
+        applyConfig();
+        showToast("success", "已套用", "配置密鑰已套用到預覽頁面。", 700);
+      } catch {
+        showToast("error", "密鑰無法讀取", "這串密鑰可能不完整，請重新複製。", 1200);
+      }
+    }
+
+    function resetConfig() {
+      config = {
+        mode: "2",
+        theme: "apple",
+        device: "ipad-landscape",
+        scale: 0.72,
+        fontScale: 1,
+        size: "normal",
+        classCols: 6,
+        numberCols: 10,
+        rowAlign: "center",
+        gradeColors: {
+          "初一": "#007aff",
+          "初二": "#34c759",
+          "初三": "#ff9500",
+          "高一": "#af52de",
+          "高二": "#ff2d55",
+          "高三": "#30b0c7"
+        },
+        buttonColors: {},
+        colorRules: []
+      };
+      applyConfig();
+      generateKey();
+    }
+
+    function openSettings() {
+      settingsLayer.classList.add("show");
+      updateSettingsUI();
+      generateKey();
+    }
+
+    function closeSettings() {
+      settingsLayer.classList.remove("show");
+    }
+
+    function getFullscreenElement() {
+      return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+    }
+
+    function toggleFullscreen() {
+      if (!getFullscreenElement()) {
+        const page = document.documentElement;
+        if (page.requestFullscreen) page.requestFullscreen();
+        else if (page.webkitRequestFullscreen) page.webkitRequestFullscreen();
+        else if (page.msRequestFullscreen) page.msRequestFullscreen();
+        fullscreenBtn.textContent = "退出全屏";
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        else if (document.msExitFullscreen) document.msExitFullscreen();
+        fullscreenBtn.textContent = "點我全屏";
+      }
+    }
+
+    document.addEventListener("fullscreenchange", () => {
+      fullscreenBtn.textContent = getFullscreenElement() ? "退出全屏" : "點我全屏";
+    });
+
+    settingsLayer.addEventListener("click", (e) => {
+      if (e.target === settingsLayer) closeSettings();
+    });
+
+    buttonColorLayer.addEventListener("click", (e) => {
+      if (e.target === buttonColorLayer) closeButtonColorEditor();
+    });
+
+    choiceModalLayer.addEventListener("click", (e) => {
+      if (e.target === choiceModalLayer) closeChoiceModal();
+    });
+
+    renderQuickColors();
+    renderGradeButtons();
+    renderNumberButtons();
+    applyConfig();
+
+    setTimeout(openSettings, 450);
+  </script>
+</body>
+</html>

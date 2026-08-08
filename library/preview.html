@@ -1879,6 +1879,16 @@
   }
 }
 
+
+/* 七色學號：列數由「學號每行數量」控制，預設 6 個一行，剛好形成 7 行彩虹 */
+.page-wrap.device-ipad-landscape .number-grid,
+.page-wrap.device-ipad-portrait .number-grid,
+#pageWrap .app > #choiceModalLayer .modal-number-grid,
+.modal-number-grid {
+  grid-template-columns: repeat(var(--cols-number), var(--number-square, 54px)) !important;
+  justify-content: center !important;
+}
+
 </style>
 </head>
 <body>
@@ -1901,7 +1911,7 @@
         </section>
 
         <section class="main">
-          <div class="step-panel active" id="gradePanel">
+          <div class="step-panel" id="gradePanel">
             <h2 class="section-title">選擇年級</h2>
             <div class="grid grade-grid" id="gradeGrid"></div>
           </div>
@@ -1965,10 +1975,10 @@
 
       <div class="settings-grid">
         <div class="setting-card">
-          <label class="label">點擊流程</label>
+          <label class="label">點擊流程</label><p class="hint-text" style="margin:0 0 8px">兩次模式會直接顯示所有班級，不會出現年級頁。</p>
           <div class="segmented">
-            <button class="seg-btn" id="mode2Btn" type="button" onclick="setConfig('mode','2')">兩次點擊</button>
-            <button class="seg-btn" id="mode3Btn" type="button" onclick="setConfig('mode','3')">三次點擊</button>
+            <button class="seg-btn" id="mode2Btn" type="button" onclick="setConfig('mode','2')">兩次：班級 → 學號</button>
+            <button class="seg-btn" id="mode3Btn" type="button" onclick="setConfig('mode','3')">三次：年級 → 班級 → 學號</button>
           </div>
         </div>
 
@@ -2031,7 +2041,7 @@
           <label class="label">學號每行數量</label>
           <div class="range-row">
             <input id="numberColsRange" type="range" min="5" max="10" step="1" oninput="setConfig('numberCols', Number(this.value))" />
-            <span class="range-value" id="numberColsValue">10</span>
+            <span class="range-value" id="numberColsValue">6</span>
           </div>
         </div>
 
@@ -2184,7 +2194,7 @@
       fontScale: 0.78,
       size: "normal",
       classCols: 6,
-      numberCols: 10,
+      numberCols: 6,
       rowAlign: "center",
       sidePadding: 18,
       buttonGap: 0,
@@ -2732,6 +2742,24 @@
       });
     }
 
+
+    const NUMBER_ROW_COLORS = [
+      "#ff453a", // 紅
+      "#ff9f0a", // 橙
+      "#ffd60a", // 黃
+      "#30d158", // 綠
+      "#32d7d7", // 青
+      "#0a84ff", // 藍
+      "#bf5af2"  // 紫
+    ];
+
+    function getDefaultNumberColor(number) {
+      const n = Math.max(1, Math.min(40, Number(number) || 1));
+      const cols = Math.max(1, Number(config.numberCols || 6));
+      const row = Math.floor((n - 1) / cols);
+      return NUMBER_ROW_COLORS[row % NUMBER_ROW_COLORS.length];
+    }
+
     function renderNumberButtons() {
       numberGrid.innerHTML = "";
       for (let i = 1; i <= 40; i++) {
@@ -2739,7 +2767,12 @@
         btn.className = "big-btn number-btn";
         btn.type = "button";
         btn.textContent = String(i);
-        applyButtonColor(btn, i + 4);
+        applySolidButtonColor(
+          btn,
+          (config.buttonColors && config.buttonColors["學號:" + i])
+            || getRuleColor("number", String(i))
+            || getDefaultNumberColor(i)
+        );
         attachColorEditor(btn, "學號:" + i, currentGrade || "初一", i + " 號", "number", i, Array.from({length: 40}, (_, idx) => "學號:" + (idx + 1)));
         btn.onclick = () => submitPreview(i);
         numberGrid.appendChild(btn);
@@ -2761,7 +2794,7 @@
         const offset = ((i - 1) % 4) * 12 - 18;
         const c = (config.buttonColors && config.buttonColors["學號:" + i])
           || ruleColorForNumber
-          || adjustHex(base, offset);
+          || getDefaultNumberColor(i);
 
         applySolidButtonColor(btn, c);
         attachColorEditor(btn, "學號:" + i, grade, i + " 號", "number", i, Array.from({length: 40}, (_, idx) => "學號:" + (idx + 1)));
@@ -2771,18 +2804,14 @@
     }
 
     function recolorNumberButtonsForClass(className) {
-      const grade = getGradeFromClass(className);
-      const base = config.gradeColors[grade] || "#007aff";
-      document.querySelectorAll(".number-btn").forEach((btn, index) => {
-        const offset = (index % 4) * 12 - 18;
-        const label = String(index + 1);
-        const ruleColorForNumber = getRuleColor("number", label);
-        const c = (config.buttonColors && config.buttonColors["學號:" + (index + 1)])
-          || ruleColorForNumber
-          || adjustHex(base, offset);
-        applySolidButtonColor(btn, c);
+      document.querySelectorAll(".number-grid .number-btn").forEach((btn, index) => {
+        const number = index + 1;
+        const explicit = config.buttonColors && config.buttonColors["學號:" + number];
+        const ruleColor = getRuleColor("number", String(number));
+        applySolidButtonColor(btn, explicit || ruleColor || getDefaultNumberColor(number));
       });
     }
+
 
     function showPanel(name) {
       gradePanel.classList.remove("active");
@@ -2795,23 +2824,33 @@
     }
 
     function refreshFlow() {
+      // Closing a step popup when the teacher changes the click-flow mode
+      // prevents an old state from remaining over the newly selected flow.
+      if (choiceModalLayer) {
+        choiceModalLayer.classList.remove("show");
+      }
+
       currentGrade = "";
       currentClass = "";
 
       if (config.mode === "3") {
+        // 三次點擊：年級 -> 班級 -> 學號
         subtitle.textContent = "第一步：請選擇年級";
-        footerText.textContent = "先點年級，再點班級，最後點學號；成功提示顯示 0.5 秒。";
+        footerText.textContent = "先選年級，再選班級；點班級後彈出學號選擇窗。";
+        renderGradeButtons();
         showPanel("grade");
       } else {
+        // 兩次點擊：班級 -> 學號
+        // Never show the grade page in this mode.
         subtitle.textContent = "第一步：請選擇班級";
-        footerText.textContent = "點班級後會彈出學號選擇窗；成功提示顯示 0.5 秒。";
+        footerText.textContent = "點班級後會彈出學號選擇窗；選擇學號後完成預覽提交。";
         renderClassButtons(ALL_CLASSES);
         showPanel("class");
       }
     }
 
     function chooseGrade(grade) {
-      if (busy) return;
+      if (busy || config.mode !== "3") return;
       currentGrade = grade;
       renderClassButtons(CLASS_MAP[grade] || []);
       subtitle.textContent = "第二步：請選擇 " + grade + " 的班級";
@@ -2821,6 +2860,11 @@
     function chooseClass(className) {
       if (busy) return;
       currentClass = className;
+
+      if (config.mode === "2") {
+        currentGrade = getGradeFromClass(className);
+      }
+
       chosenText.textContent = config.mode === "3" ? (currentGrade + "　" + className) : className;
       subtitle.textContent = (config.mode === "3" ? "第三步" : "第二步") + "：請選擇學號";
       recolorNumberButtonsForClass(className);
@@ -3088,7 +3132,7 @@
       fontScale: 0.78,
       size: "normal",
       classCols: 6,
-      numberCols: 10,
+      numberCols: 6,
       rowAlign: "center",
       sidePadding: 18,
       buttonGap: 0,

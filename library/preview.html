@@ -1791,6 +1791,94 @@
   }
 }
 
+
+/* =========================================================
+   iPad-contained choice modal
+   學號彈窗完全以模擬 iPad 畫布為基準，不再以宿主瀏覽器視窗為基準。
+   ========================================================= */
+#pageWrap .app {
+  position: relative !important;
+}
+
+#pageWrap .app > #choiceModalLayer {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 28px !important;
+  box-sizing: border-box !important;
+  z-index: 60 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(15,23,42,.22) !important;
+  backdrop-filter: blur(7px) !important;
+  -webkit-backdrop-filter: blur(7px) !important;
+}
+
+#pageWrap .app > #choiceModalLayer .choice-modal {
+  width: 760px !important;
+  max-width: calc(100% - 56px) !important;
+  max-height: calc(100% - 56px) !important;
+  padding: 22px !important;
+  border-radius: 28px !important;
+  box-sizing: border-box !important;
+}
+
+#pageWrap .app > #choiceModalLayer .choice-modal-title {
+  font-size: calc(25px * var(--font-scale)) !important;
+}
+
+#pageWrap .app > #choiceModalLayer .choice-modal-subtitle {
+  font-size: calc(14px * var(--font-scale)) !important;
+  margin-top: 5px !important;
+}
+
+#pageWrap .app > #choiceModalLayer .choice-modal-head {
+  margin-bottom: 14px !important;
+}
+
+/* 橫屏 1024×768：8 個正方形學號一行 */
+.page-wrap.device-ipad-landscape .app > #choiceModalLayer .modal-number-grid {
+  grid-template-columns: repeat(8, var(--number-square, 54px)) !important;
+  justify-content: center !important;
+  gap: 10px !important;
+}
+
+/* 直屏 768×1024：5 個一行 */
+.page-wrap.device-ipad-portrait .app > #choiceModalLayer .choice-modal {
+  width: 620px !important;
+  max-width: calc(100% - 40px) !important;
+  max-height: calc(100% - 40px) !important;
+  padding: 20px !important;
+}
+
+.page-wrap.device-ipad-portrait .app > #choiceModalLayer .modal-number-grid {
+  grid-template-columns: repeat(5, var(--number-square, 54px)) !important;
+  justify-content: center !important;
+  gap: 10px !important;
+}
+
+/* 宿主手機寬度不能再改 iPad 內部彈窗列數 */
+@media (max-width: 760px) {
+  #pageWrap .app > #choiceModalLayer .choice-modal {
+    width: 760px !important;
+    max-width: calc(100% - 56px) !important;
+  }
+
+  .page-wrap.device-ipad-landscape .app > #choiceModalLayer .modal-number-grid {
+    grid-template-columns: repeat(8, var(--number-square, 54px)) !important;
+  }
+
+  .page-wrap.device-ipad-portrait .app > #choiceModalLayer .choice-modal {
+    width: 620px !important;
+    max-width: calc(100% - 40px) !important;
+  }
+
+  .page-wrap.device-ipad-portrait .app > #choiceModalLayer .modal-number-grid {
+    grid-template-columns: repeat(5, var(--number-square, 54px)) !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1843,6 +1931,14 @@
   </div>
 
 
+  <div class="toast-layer" id="toastLayer">
+    <div class="toast">
+      <div class="toast-icon success" id="toastIcon"></div>
+      <h2 id="toastTitle">提交成功</h2>
+      <p id="toastMessage">已成功記錄。</p>
+    </div>
+  </div>
+
   <div class="choice-modal-layer" id="choiceModalLayer">
     <div class="choice-modal">
       <div class="choice-modal-head">
@@ -1856,14 +1952,6 @@
     </div>
   </div>
 
-
-  <div class="toast-layer" id="toastLayer">
-    <div class="toast">
-      <div class="toast-icon success" id="toastIcon"></div>
-      <h2 id="toastTitle">提交成功</h2>
-      <p id="toastMessage">已成功記錄。</p>
-    </div>
-  </div>
 
   <div class="modal-layer" id="settingsLayer">
     <div class="modal">
@@ -3524,6 +3612,16 @@
       setTimeout(updateTrueIpadSimulatorScale, 120);
     });
 
+  
+    // 將學號彈窗真正掛到模擬 iPad 的 app 內，
+    // 讓它的尺寸與定位永遠以 1024×768 / 768×1024 畫布為準。
+    (function mountChoiceModalInsideIpad() {
+      const app = document.querySelector("#pageWrap .app");
+      const modal = document.getElementById("choiceModalLayer");
+      if (app && modal && modal.parentElement !== app) {
+        app.appendChild(modal);
+      }
+    })();
   </script>
 </body>
 </html>

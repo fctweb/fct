@@ -1,0 +1,39 @@
+name: Build AdminApproval Artifact
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  build-adminapproval:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Build AdminApproval
+        working-directory: AdminApproval
+        run: mvn -B -DskipTests package
+
+      - name: Prepare AdminApproval.jar
+        run: |
+          cp "$(ls AdminApproval/target/*.jar | head -n1)" AdminApproval/target/AdminApproval.jar
+
+      - name: Upload AdminApproval.jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdminApproval.jar
+          path: AdminApproval/target/AdminApproval.jar
+          if-no-files-found: error

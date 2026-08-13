@@ -24,7 +24,7 @@ public final class AdminRequestsCommand implements CommandExecutor {
             return true;
         }
 
-        List<ApprovalRequest> requests = this.requestStore.list();
+        List<ApprovalRequest> requests = this.requestStore.listPending();
         if (requests.isEmpty()) {
             sender.sendMessage("§a当前没有待审批申请。§r");
             return true;

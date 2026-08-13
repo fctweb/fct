@@ -35,12 +35,13 @@ public final class AdminRejectCommand implements CommandExecutor {
             return true;
         }
 
-        ApprovalRequest request = this.requestStore.remove(requestId);
+        ApprovalRequest request = this.requestStore.removePending(requestId);
         if (request == null) {
             sender.sendMessage("§c未找到申请 #" + requestId + "。§r");
             return true;
         }
 
+        this.requestStore.recordRejected(request, sender.getName());
         sender.sendMessage("§e已拒绝申请 #" + request.id() + "。§r");
 
         Player requester = Bukkit.getPlayer(request.requesterId());

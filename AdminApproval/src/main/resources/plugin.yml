@@ -22,6 +22,10 @@ commands:
     description: 查看待审批申请列表
     usage: /adminrequests
     permission: adminapproval.approve
+  adminhistory:
+    description: 查看审批历史
+    usage: /adminhistory [数量]
+    permission: adminapproval.approve
 
 permissions:
   adminapproval.request:

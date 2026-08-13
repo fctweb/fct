@@ -35,13 +35,15 @@ public final class AdminApproveCommand implements CommandExecutor {
             return true;
         }
 
-        ApprovalRequest request = this.requestStore.remove(requestId);
+        ApprovalRequest request = this.requestStore.removePending(requestId);
         if (request == null) {
             sender.sendMessage("§c未找到申请 #" + requestId + "。§r");
             return true;
         }
 
         boolean success = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), request.command());
+        this.requestStore.recordApproved(request, sender.getName(), success);
+
         if (success) {
             sender.sendMessage("§a申请 #" + request.id() + " 已审批并执行：/" + request.command() + "§r");
         } else {

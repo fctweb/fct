@@ -12,23 +12,15 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.release>25</maven.compiler.release>
-        <paper.api.version>1.21.8-R0.1-SNAPSHOT</paper.api.version>
+        <maven.compiler.release>17</maven.compiler.release>
+        <paper.api.version>26.1.2</paper.api.version>
     </properties>
-
-    <repositories>
-        <repository>
-            <id>papermc</id>
-            <url>https://repo.papermc.io/repository/maven-public/</url>
-        </repository>
-    </repositories>
 
     <dependencies>
         <dependency>
-            <groupId>io.papermc.paper</groupId>
-            <artifactId>paper-api</artifactId>
-            <version>${paper.api.version}</version>
-            <scope>provided</scope>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>2.2</version>
         </dependency>
     </dependencies>
 
@@ -42,6 +34,42 @@
                     <release>${maven.compiler.release}</release>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <configuration>
+                    <excludes>
+                        <exclude>org/bukkit/**</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>official-paper-api</id>
+            <activation>
+                <property>
+                    <name>paperApi</name>
+                    <value>official</value>
+                </property>
+            </activation>
+            <repositories>
+                <repository>
+                    <id>papermc</id>
+                    <url>https://repo.papermc.io/repository/maven-public/</url>
+                </repository>
+            </repositories>
+            <dependencies>
+                <dependency>
+                    <groupId>io.papermc.paper</groupId>
+                    <artifactId>paper-api</artifactId>
+                    <version>${paper.api.version}</version>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>

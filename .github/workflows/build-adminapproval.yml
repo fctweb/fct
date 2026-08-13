@@ -8,6 +8,8 @@ on:
 jobs:
   build-adminapproval:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout

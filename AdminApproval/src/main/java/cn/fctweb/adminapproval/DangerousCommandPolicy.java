@@ -5,21 +5,42 @@ import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 
-import java.util.Collections;
-import java.util.HashSet;
 import java.lang.reflect.Method;
-import java.util.Locale;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
+import java.util.function.Supplier;
 
 public final class DangerousCommandPolicy {
     private static final Set<String> DANGEROUS_DEFAULT = Set.of(
             "op", "deop", "stop", "restart", "reload", "ban", "pardon", "whitelist", "give", "item", "execute"
     );
-    private final Set<String> commandWhitelist;
 
-    public DangerousCommandPolicy(Set<String> initialWhitelist) {
-        this.commandWhitelist = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> dangerousCommands;
+    private final Set<String> commandWhitelist;
+    private final Supplier<CommandMap> commandMapSupplier;
+
+    public DangerousCommandPolicy(Set<String> dangerousCommands, Set<String> initialWhitelist) {
+        this(dangerousCommands, initialWhitelist, DangerousCommandPolicy::resolveCommandMap);
+    }
+
+    public DangerousCommandPolicy(Set<String> dangerousCommands, Set<String> initialWhitelist,
+                                  Supplier<CommandMap> commandMapSupplier) {
+        Set<String> dangerous = new LinkedHashSet<>();
+        if (dangerousCommands == null || dangerousCommands.isEmpty()) {
+            dangerous.addAll(DANGEROUS_DEFAULT);
+        } else {
+            for (String entry : dangerousCommands) {
+                String normalized = normalizeLabel(entry);
+                if (!normalized.isEmpty()) {
+                    dangerous.add(normalized);
+                }
+            }
+        }
+        this.dangerousCommands = Collections.synchronizedSet(dangerous);
+        this.commandWhitelist = Collections.synchronizedSet(new LinkedHashSet<>());
         if (initialWhitelist != null) {
             for (String entry : initialWhitelist) {
                 String normalized = normalizeLabel(entry);
@@ -28,6 +49,7 @@ public final class DangerousCommandPolicy {
                 }
             }
         }
+        this.commandMapSupplier = commandMapSupplier == null ? DangerousCommandPolicy::resolveCommandMap : commandMapSupplier;
     }
 
     public boolean isDangerous(String fullCommandLine) {
@@ -37,26 +59,29 @@ public final class DangerousCommandPolicy {
         }
 
         String normalizedInput = normalizeLabel(label);
-        if (DANGEROUS_DEFAULT.contains(normalizedInput)) {
+        if (this.dangerousCommands.contains(normalizedInput)) {
             return true;
         }
 
         String primary = resolvePrimaryLabel(label);
-        return primary != null && DANGEROUS_DEFAULT.contains(primary);
+        return primary != null && this.dangerousCommands.contains(primary);
     }
 
     public boolean requiresApproval(String fullCommandLine) {
         if (!isDangerous(fullCommandLine)) {
             return false;
         }
+
         String label = extractLabel(fullCommandLine);
         if (label == null) {
             return false;
         }
+
         String normalizedInput = normalizeLabel(label);
         if (isWhitelisted(normalizedInput)) {
             return false;
         }
+
         String primary = resolvePrimaryLabel(label);
         return primary == null || !isWhitelisted(primary);
     }
@@ -90,10 +115,7 @@ public final class DangerousCommandPolicy {
     }
 
     private boolean isWhitelisted(String commandLabel) {
-        if (commandLabel == null || commandLabel.isEmpty()) {
-            return false;
-        }
-        return this.commandWhitelist.contains(commandLabel);
+        return commandLabel != null && !commandLabel.isEmpty() && this.commandWhitelist.contains(commandLabel);
     }
 
     private boolean isInternalCommand(String label) {
@@ -132,7 +154,7 @@ public final class DangerousCommandPolicy {
     }
 
     private String resolvePrimaryLabel(String label) {
-        CommandMap commandMap = getCommandMap(Bukkit.getServer());
+        CommandMap commandMap = this.commandMapSupplier.get();
         if (commandMap == null) {
             return null;
         }
@@ -151,8 +173,9 @@ public final class DangerousCommandPolicy {
         return normalizeLabel(command.getName());
     }
 
-    private CommandMap getCommandMap(Server server) {
+    private static CommandMap resolveCommandMap() {
         try {
+            Server server = Bukkit.getServer();
             Method method = server.getClass().getMethod("getCommandMap");
             Object value = method.invoke(server);
             if (value instanceof CommandMap commandMap) {
@@ -164,15 +187,18 @@ public final class DangerousCommandPolicy {
         return null;
     }
 
-    private String normalizeLabel(String label) {
+    public static String normalizeLabel(String label) {
         if (label == null) {
             return "";
         }
-        String normalized = label.toLowerCase(Locale.ROOT);
+        String normalized = label.toLowerCase(Locale.ROOT).trim();
+        if (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
         int separatorIndex = normalized.lastIndexOf(':');
         if (separatorIndex >= 0 && separatorIndex < normalized.length() - 1) {
             return normalized.substring(separatorIndex + 1);
         }
-        return normalized.trim();
+        return normalized;
     }
 }

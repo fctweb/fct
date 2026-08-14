@@ -13,8 +13,11 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public final class DataFileStore {
@@ -24,9 +27,13 @@ public final class DataFileStore {
         this.dataFile = dataFile;
     }
 
+    /**
+     * whitelist 为 null 表示 data.yml 尚未配置白名单（新服或升级自旧版本），
+     * 此时应使用 command-settings.yml 中的初始白名单。
+     */
     public StoreSnapshot load() {
         if (!Files.exists(this.dataFile)) {
-            return new StoreSnapshot(1, List.of(), List.of());
+            return new StoreSnapshot(1, List.of(), List.of(), null);
         }
 
         LoaderOptions loaderOptions = new LoaderOptions();
@@ -35,13 +42,14 @@ public final class DataFileStore {
         try (InputStream input = Files.newInputStream(this.dataFile)) {
             Object loaded = yaml.load(input);
             if (!(loaded instanceof Map<?, ?> root)) {
-                return new StoreSnapshot(1, List.of(), List.of());
+                return new StoreSnapshot(1, List.of(), List.of(), null);
             }
 
             int nextId = readInt(root.get("next-id"), 1);
             List<ApprovalRequest> pending = parsePending(root.get("pending"));
             List<ApprovalHistoryEntry> history = parseHistory(root.get("history"));
-            return new StoreSnapshot(nextId, pending, history);
+            Set<String> whitelist = parseWhitelist(root.get("whitelist"));
+            return new StoreSnapshot(nextId, pending, history, whitelist);
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to load " + this.dataFile, ex);
         }
@@ -83,6 +91,8 @@ public final class DataFileStore {
 
         root.put("pending", pending);
         root.put("history", history);
+        Set<String> whitelist = snapshot.whitelist() == null ? Set.of() : snapshot.whitelist();
+        root.put("whitelist", whitelist.stream().sorted().toList());
 
         DumperOptions dumperOptions = new DumperOptions();
         dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
@@ -94,6 +104,26 @@ public final class DataFileStore {
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to save " + this.dataFile, ex);
         }
+    }
+
+    private Set<String> parseWhitelist(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof List<?> list)) {
+            return Set.of();
+        }
+        Set<String> whitelist = new LinkedHashSet<>();
+        for (Object item : list) {
+            if (item == null) {
+                continue;
+            }
+            String text = String.valueOf(item).trim().toLowerCase(Locale.ROOT);
+            if (!text.isEmpty()) {
+                whitelist.add(text);
+            }
+        }
+        return whitelist;
     }
 
     private List<ApprovalRequest> parsePending(Object value) {

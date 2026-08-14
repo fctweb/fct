@@ -59,6 +59,10 @@ public final class RequestStore {
         return request;
     }
 
+    public synchronized ApprovalRequest getPending(int id) {
+        return this.pending.get(id);
+    }
+
     public synchronized ApprovalRequest removePending(int id) {
         ApprovalRequest removed = this.pending.remove(id);
         if (removed != null) {

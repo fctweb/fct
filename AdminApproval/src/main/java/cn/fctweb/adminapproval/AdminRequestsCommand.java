@@ -12,25 +12,27 @@ public final class AdminRequestsCommand implements CommandExecutor {
     private static final String PERMISSION_APPROVE = "adminapproval.approve";
 
     private final RequestStore requestStore;
+    private final AccessControl accessControl;
 
-    public AdminRequestsCommand(RequestStore requestStore) {
+    public AdminRequestsCommand(RequestStore requestStore, AccessControl accessControl) {
         this.requestStore = requestStore;
+        this.accessControl = accessControl;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission(PERMISSION_APPROVE)) {
-            sender.sendMessage("§c你没有查看申请列表的权限。§r");
+        if (!this.accessControl.isOwner(sender) && !sender.hasPermission(PERMISSION_APPROVE)) {
+            sender.sendMessage("§c没有权限执行此命令。");
             return true;
         }
 
         List<ApprovalRequest> requests = this.requestStore.listPending();
         if (requests.isEmpty()) {
-            sender.sendMessage("§a当前没有待审批申请。§r");
+            sender.sendMessage("§a当前没有待处理的审批请求。");
             return true;
         }
 
-        sender.sendMessage("§6待审批申请列表：§r");
+        sender.sendMessage("§6当前待审批请求:");
         Instant now = Instant.now();
         for (ApprovalRequest request : requests) {
             long minutes = Duration.between(request.createdAt(), now).toMinutes();

@@ -10,7 +10,6 @@ import java.io.InputStream;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -36,39 +35,19 @@ public final class ApprovalConfigStore {
         try (InputStream input = Files.newInputStream(this.configFile)) {
             Object loaded = yaml.load(input);
             if (!(loaded instanceof Map<?, ?> root)) {
-                return new ApprovalConfig(Set.of(), Set.of());
+                return new ApprovalConfig(Set.of());
             }
-
-            Set<UUID> owners = parseOwners(root.get("owner-uuid"));
-            Set<String> whitelist = parseWhitelist(root.get("command-whitelist"));
-            return new ApprovalConfig(owners, whitelist);
+            return new ApprovalConfig(parseOwners(root.get("owner-uuid")));
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to load " + this.configFile, ex);
         }
     }
 
     public void save(ApprovalConfig config) {
-        try {
-            Files.createDirectories(this.configFile.getParent());
-        } catch (IOException ex) {
-            throw new IllegalStateException("Failed to create config folder", ex);
-        }
-
         Map<String, Object> root = new HashMap<>();
         List<String> owners = config.ownerUuids().stream().map(UUID::toString).sorted().toList();
         root.put("owner-uuid", owners);
-        root.put("command-whitelist", config.commandWhitelist().stream().sorted().toList());
-
-        DumperOptions dumperOptions = new DumperOptions();
-        dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-        dumperOptions.setPrettyFlow(true);
-
-        Yaml yaml = new Yaml(dumperOptions);
-        try (Writer writer = Files.newBufferedWriter(this.configFile)) {
-            yaml.dump(root, writer);
-        } catch (IOException ex) {
-            throw new IllegalStateException("Failed to save " + this.configFile, ex);
-        }
+        writeYaml(root);
     }
 
     private Set<UUID> parseOwners(Object value) {
@@ -89,34 +68,18 @@ public final class ApprovalConfigStore {
         return Set.copyOf(owners);
     }
 
-    private Set<String> parseWhitelist(Object value) {
-        if (!(value instanceof List<?> list)) {
-            return Set.of();
-        }
-
-        List<String> normalized = new ArrayList<>();
-        for (Object item : list) {
-            if (item == null) {
-                continue;
-            }
-            String text = String.valueOf(item).trim().toLowerCase();
-            if (!text.isEmpty()) {
-                normalized.add(text);
-            }
-        }
-        return Set.copyOf(normalized);
+    private void writeDefaultFile() {
+        Map<String, Object> root = new HashMap<>();
+        root.put("owner-uuid", List.of("填写服主UUID"));
+        writeYaml(root);
     }
 
-    private void writeDefaultFile() {
+    private void writeYaml(Map<String, Object> root) {
         try {
             Files.createDirectories(this.configFile.getParent());
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to create config folder", ex);
         }
-
-        Map<String, Object> root = new HashMap<>();
-        root.put("owner-uuid", List.of("填写服主UUID"));
-        root.put("command-whitelist", List.of());
 
         DumperOptions dumperOptions = new DumperOptions();
         dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
@@ -126,7 +89,7 @@ public final class ApprovalConfigStore {
         try (Writer writer = Files.newBufferedWriter(this.configFile)) {
             yaml.dump(root, writer);
         } catch (IOException ex) {
-            throw new IllegalStateException("Failed to write default " + this.configFile, ex);
+            throw new IllegalStateException("Failed to write " + this.configFile, ex);
         }
     }
 }

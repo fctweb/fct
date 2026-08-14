@@ -9,15 +9,14 @@ import org.bukkit.entity.Player;
 import java.util.List;
 
 public final class AdminRequestCommand implements CommandExecutor {
-    public static final String PERMISSION_REQUEST = "adminapproval.request";
-    public static final String PERMISSION_APPROVE = "adminapproval.approve";
-
     private final DangerousCommandPolicy policy;
     private final RequestStore requestStore;
+    private final AccessControl accessControl;
 
-    public AdminRequestCommand(DangerousCommandPolicy policy, RequestStore requestStore) {
+    public AdminRequestCommand(DangerousCommandPolicy policy, RequestStore requestStore, AccessControl accessControl) {
         this.policy = policy;
         this.requestStore = requestStore;
+        this.accessControl = accessControl;
     }
 
     @Override
@@ -27,8 +26,13 @@ public final class AdminRequestCommand implements CommandExecutor {
             return true;
         }
 
-        if (!player.hasPermission(PERMISSION_REQUEST)) {
-            player.sendMessage("§c你没有提交危险命令申请的权限。§r");
+        if (this.accessControl.isOwner(player)) {
+            player.sendMessage("§a你是腐竹，危险命令无需审批可直接执行。§r");
+            return true;
+        }
+
+        if (!this.accessControl.isAdmin(player)) {
+            player.sendMessage("§c你不是管理员，无法提交危险命令审批。§r");
             return true;
         }
 
@@ -47,17 +51,24 @@ public final class AdminRequestCommand implements CommandExecutor {
             return true;
         }
 
+        if (!this.policy.requiresApproval(requested)) {
+            player.sendMessage("§a该危险命令已在免审批白名单中，可直接执行。§r");
+            return true;
+        }
+
         ApprovalRequest request = this.requestStore.create(player.getUniqueId(), player.getName(), requested);
 
         String submitMessage = "§a申请已提交，编号 #" + request.id() + "，等待腐竹审批。§r";
         player.sendMessage(submitMessage);
 
-        String notifyMessage = "§6[AdminApproval] 新申请 #" + request.id() + " 来自 "
-                + request.requesterName() + "：/" + request.command() + "§r";
-
         Bukkit.getOnlinePlayers().stream()
-                .filter(online -> online.hasPermission(PERMISSION_APPROVE))
-                .forEach(online -> online.sendMessage(notifyMessage));
+                .filter(this.accessControl::isOwner)
+                .forEach(online -> {
+                    online.sendMessage("§6[AdminApproval] 新审批申请§r");
+                    online.sendMessage("§e编号: #" + request.id() + "§r");
+                    online.sendMessage("§e申请人: " + request.requesterName() + "§r");
+                    online.sendMessage("§e命令: " + request.command() + "§r");
+                });
 
         return true;
     }

@@ -5,14 +5,30 @@ import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.lang.reflect.Method;
 import java.util.Locale;
+import java.util.List;
 import java.util.Set;
 
 public final class DangerousCommandPolicy {
-    private static final Set<String> DANGEROUS = Set.of(
-            "op", "deop", "give", "item", "gamemode", "tp", "teleport", "execute", "ban", "pardon", "whitelist", "stop", "reload"
+    private static final Set<String> DANGEROUS_DEFAULT = Set.of(
+            "op", "deop", "stop", "restart", "reload", "ban", "pardon", "whitelist", "give", "item", "execute"
     );
+    private final Set<String> commandWhitelist;
+
+    public DangerousCommandPolicy(Set<String> initialWhitelist) {
+        this.commandWhitelist = Collections.synchronizedSet(new HashSet<>());
+        if (initialWhitelist != null) {
+            for (String entry : initialWhitelist) {
+                String normalized = normalizeLabel(entry);
+                if (!normalized.isEmpty()) {
+                    this.commandWhitelist.add(normalized);
+                }
+            }
+        }
+    }
 
     public boolean isDangerous(String fullCommandLine) {
         String label = extractLabel(fullCommandLine);
@@ -21,12 +37,63 @@ public final class DangerousCommandPolicy {
         }
 
         String normalizedInput = normalizeLabel(label);
-        if (DANGEROUS.contains(normalizedInput)) {
+        if (DANGEROUS_DEFAULT.contains(normalizedInput)) {
             return true;
         }
 
         String primary = resolvePrimaryLabel(label);
-        return primary != null && DANGEROUS.contains(primary);
+        return primary != null && DANGEROUS_DEFAULT.contains(primary);
+    }
+
+    public boolean requiresApproval(String fullCommandLine) {
+        if (!isDangerous(fullCommandLine)) {
+            return false;
+        }
+        String label = extractLabel(fullCommandLine);
+        if (label == null) {
+            return false;
+        }
+        String normalizedInput = normalizeLabel(label);
+        if (isWhitelisted(normalizedInput)) {
+            return false;
+        }
+        String primary = resolvePrimaryLabel(label);
+        return primary == null || !isWhitelisted(primary);
+    }
+
+    public boolean addWhitelist(String commandLabel) {
+        String normalized = normalizeLabel(commandLabel);
+        if (normalized.isEmpty()) {
+            return false;
+        }
+        return this.commandWhitelist.add(normalized);
+    }
+
+    public boolean removeWhitelist(String commandLabel) {
+        String normalized = normalizeLabel(commandLabel);
+        if (normalized.isEmpty()) {
+            return false;
+        }
+        return this.commandWhitelist.remove(normalized);
+    }
+
+    public Set<String> getCommandWhitelist() {
+        synchronized (this.commandWhitelist) {
+            return Set.copyOf(this.commandWhitelist);
+        }
+    }
+
+    public List<String> listWhitelist() {
+        synchronized (this.commandWhitelist) {
+            return this.commandWhitelist.stream().sorted().toList();
+        }
+    }
+
+    private boolean isWhitelisted(String commandLabel) {
+        if (commandLabel == null || commandLabel.isEmpty()) {
+            return false;
+        }
+        return this.commandWhitelist.contains(commandLabel);
     }
 
     private boolean isInternalCommand(String label) {
@@ -34,7 +101,9 @@ public final class DangerousCommandPolicy {
         return normalized.equals("adminrequest")
                 || normalized.equals("adminapprove")
                 || normalized.equals("adminreject")
-                || normalized.equals("adminrequests");
+                || normalized.equals("adminrequests")
+                || normalized.equals("adminhistory")
+                || normalized.equals("adminapproval");
     }
 
     private String extractLabel(String fullCommandLine) {
@@ -96,11 +165,14 @@ public final class DangerousCommandPolicy {
     }
 
     private String normalizeLabel(String label) {
+        if (label == null) {
+            return "";
+        }
         String normalized = label.toLowerCase(Locale.ROOT);
         int separatorIndex = normalized.lastIndexOf(':');
         if (separatorIndex >= 0 && separatorIndex < normalized.length() - 1) {
             return normalized.substring(separatorIndex + 1);
         }
-        return normalized;
+        return normalized.trim();
     }
 }

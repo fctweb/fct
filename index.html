@@ -1,417 +1,950 @@
-<!DOCTYPE html>
-<html lang="zh-MO">
+<!doctype html>
+<html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Escola Fong Chong da Taipa | 氹仔坊眾學校</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&family=Noto+Sans+TC:wght@300;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f3f1ec">
+  <title>圖書館入館登記</title>
   <style>
-    :root { --accent: #00ffff; --curve: cubic-bezier(0.25, 1, 0.3, 1); }
-    * { margin:0; padding:0; box-sizing:border-box; }
-    
-    body, html { 
-      background: radial-gradient(circle at 50% 50%, #0a1930 0%, #010308 100%); 
-      color: #fff; font-family: 'Noto Sans TC', sans-serif; overflow: hidden; height: 100vh; cursor: none; 
-      touch-action: none; 
+    :root {
+      color-scheme: light;
+      --ground: #ebe8e1;
+      --surface: #fffefb;
+      --ink: #17242c;
+      --muted: #59676f;
+      --rule: #d5d2ca;
+      --accent: #1f5874;
+      --accent-dark: #153f55;
+      --accent-soft: #e5eef2;
+      --danger: #9f2f2f;
+      --focus: #245a78;
+      --radius: 6px;
+      --space-1: 8px;
+      --space-2: 12px;
+      --space-3: 16px;
+      --space-4: 24px;
+      --space-5: 32px;
     }
 
-    #loader {
-      position: fixed; inset: 0; background: #010308; z-index: 10000;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      transition: opacity 1s var(--curve);
-    }
-    .loading-zh { font-size: 2.2rem; letter-spacing: 0.2em; font-weight: 500; text-align: center; }
-    .loading-en { font-family: 'Space Grotesk'; font-size: 0.9rem; letter-spacing: 0.3em; color: var(--accent); margin-top: 10px; text-align: center; opacity: 0.8; }
-    .progress-box { width: 250px; height: 1px; background: rgba(255,255,255,0.1); margin-top: 40px; position: relative; transition: opacity 0.5s; }
-    .bar { height: 100%; width: 0%; background: var(--accent); box-shadow: 0 0 15px var(--accent); transition: width 0.1s linear; }
-    
-    .start-btn {
-      margin-top: 30px; background: none; border: none; color: #fff; font-family: 'Space Grotesk'; 
-      font-size: 0.9rem; letter-spacing: 0.5em; cursor: none; opacity: 0; pointer-events: none;
-      transition: opacity 1s ease, color 0.3s, text-shadow 0.3s; position: absolute; top: calc(50% + 80px);
-    }
-    .start-btn.ready { opacity: 1; pointer-events: auto; }
-    .start-btn:hover { color: var(--accent); text-shadow: 0 0 15px var(--accent); }
+    * { box-sizing: border-box; }
 
-    .calibration-hint {
-      position: absolute; top: calc(50% + 140px); font-size: 0.8rem; color: #00ffff;
-      letter-spacing: 0.1em; opacity: 0; transition: opacity 1s ease; pointer-events: none;
-      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-    }
-    .start-btn.ready + .calibration-hint { opacity: 1; }
+    html, body { min-height: 100%; }
 
-    @media (pointer: coarse) { #cursor { display: none !important; } body, html { cursor: auto; } }
-
-    #cursor {
-      position: fixed; width: 30px; height: 30px; pointer-events: none; z-index: 99999;
-      transform: translate(-50%, -50%) rotate(45deg); transition: transform 0.2s var(--curve);
-    }
-    #cursor::before, #cursor::after { content: ''; position: absolute; background: #fff; left: 50%; top: 50%; transform: translate(-50%, -50%); transition: background 0.3s; }
-    #cursor::before { width: 1.5px; height: 16px; }
-    #cursor::after { width: 16px; height: 1.5px; }
-    body.hover-interact #cursor { transform: translate(-50%, -50%) rotate(0deg); }
-    body.hover-interact #cursor::before, body.hover-interact #cursor::after { background: var(--accent); height: 22px; width: 2px; }
-    body.hover-interact #cursor::after { width: 22px; height: 2px; }
-
-    #bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; display: block; }
-    
-    .viewport { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
-    .page {
-      position: absolute; inset: 0; display: flex; align-items: center; padding: 0 10%;
-      opacity: 0; transform: scale(1.05); pointer-events: none; transition: opacity 0.8s ease, transform 0.8s ease; z-index: 1;
-    }
-    .page.active { opacity: 1; transform: scale(1); pointer-events: auto; z-index: 10; }
-
-    .content-box { width: 100%; max-width: 800px; transition: all 0.8s var(--curve); }
-    .content-box.shrink { transform: scale(0.6) translate(-100px, 0); opacity: 0.4; pointer-events: none; }
-
-    .tag { font-family: 'Space Grotesk'; font-size: 0.8rem; color: rgba(255,255,255,0.4); letter-spacing: 0.3em; margin-bottom: 15px; display: block; }
-    
-    .interactive-title {
-      font-size: clamp(2.5rem, 6vw, 5rem); font-weight: 700; cursor: none; display: inline-block;
-      color: transparent; -webkit-text-stroke: 1.5px var(--accent); position: relative; margin-bottom: 20px;
-    }
-    @media (pointer: coarse) { 
-      .interactive-title { color: #fff; -webkit-text-stroke: 0; }
-      .interactive-title::after { display: none; }
-    }
-    .interactive-title::after {
-      content: attr(data-text); position: absolute; left: 0; top: 0; color: #fff; -webkit-text-stroke: 0;
-      -webkit-mask-image: radial-gradient(circle 80px at var(--x, -100px) var(--y, -100px), transparent 95%, black 100%);
-      mask-image: radial-gradient(circle 80px at var(--x, -100px) var(--y, -100px), transparent 95%, black 100%); pointer-events: none;
-    }
-    
-    .desc { font-size: clamp(1rem, 2vw, 1.15rem); line-height: 2; color: rgba(255,255,255,0.7); font-weight: 300; }
-
-    .action-btn {
-      display: inline-block; margin-top: 30px; padding: 15px 35px;
-      background: rgba(0, 255, 255, 0.05); border: 1px solid rgba(0, 255, 255, 0.3);
-      color: var(--accent); font-family: 'Space Grotesk'; font-size: 0.9rem; letter-spacing: 0.2em;
-      cursor: none; transition: all 0.3s ease; position: relative; overflow: hidden;
-    }
-    @media (pointer: coarse) { .action-btn { cursor: pointer; } }
-    .action-btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 25px rgba(0, 255, 255, 0.5); font-weight: bold; }
-
-    .side-panel {
-      position: fixed; right: 0; top: 0; width: 45vw; height: 100vh;
-      background: rgba(4, 10, 20, 0.85); backdrop-filter: blur(25px); border-left: 1px solid rgba(0,255,255,0.15);
-      z-index: 100; transform: translateX(100%); transition: transform 0.8s var(--curve);
-      padding: 15vh 5vw; display: flex; flex-direction: column; justify-content: center;
-    }
-    @media (max-width: 768px) { .side-panel { width: 100vw; padding: 15vh 10vw; } }
-    .side-panel.open { transform: translateX(0); }
-    .panel-title { font-size: 2.5rem; color: var(--accent); margin-bottom: 1.5rem; }
-    .panel-text { font-size: 1.1rem; line-height: 2.2; color: #e0e0e0; font-weight: 300;}
-    .close-btn { position: absolute; top: 40px; right: 40px; color: var(--accent); font-family: 'Space Grotesk'; font-size: 0.9rem; letter-spacing: 0.2em; cursor: none; transition: 0.3s; }
-    @media (pointer: coarse) { .close-btn { cursor: pointer; } }
-    .close-btn:hover { color: #fff; text-shadow: 0 0 15px var(--accent); }
-
-    .matrix-wrap { 
-      width: 100%; height: 40vh; overflow-y: auto; overflow-x: hidden; position: relative; margin-top: 2rem; 
-      scroll-behavior: smooth;
-      scrollbar-width: none; -ms-overflow-style: none;
-      mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent); 
-      -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent); 
-    }
-    .matrix-wrap::-webkit-scrollbar { display: none; }
-    
-    .log-line { 
-      font-family: 'JetBrains Mono', monospace; 
-      font-size: 0.85rem; 
-      color: rgba(0,255,255,0.6); 
-      margin-bottom: 8px; 
-      animation: logEntry 0.15s ease-out forwards; 
-    }
-    
-    @keyframes logEntry {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+    body {
+      margin: 0;
+      overflow-x: hidden;
+      background: var(--ground);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .log-line span { 
-      color: #e0e0e0; font-family: 'JetBrains Mono', monospace; font-weight: normal; 
-      letter-spacing: 0; margin-left: 15px; transition: 0.2s;
+    button { font: inherit; }
+
+    button:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 3px;
     }
+
+    ::selection { background: #c9dbe5; color: var(--ink); }
+
+    .app {
+      width: min(100%, 1200px);
+      min-height: 100vh;
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: 0 clamp(24px, 5vw, 68px) max(20px, env(safe-area-inset-bottom));
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      background: var(--surface);
+    }
+
+    .topbar {
+      min-height: 88px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-inline: clamp(-68px, -5vw, -24px);
+      padding: max(16px, env(safe-area-inset-top)) clamp(24px, 5vw, 68px) 16px;
+      border-bottom: 0;
+      background: var(--accent-dark);
+    }
+
+    .title {
+      margin: 0;
+      color: white;
+      font-size: clamp(23px, 3vw, 31px);
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .secondary-button,
+    .text-button,
+    .close-button {
+      min-height: 48px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .topbar .secondary-button {
+      border-color: rgba(255, 255, 255, 0.62);
+      background: transparent;
+      color: white;
+    }
+    .topbar .secondary-button:hover { background: rgba(255, 255, 255, 0.1); }
+    .secondary-button { padding: 0 18px; font-weight: 500; white-space: nowrap; }
+    .secondary-button:hover, .text-button:hover, .close-button:hover { background: #f1efea; }
+
+    main {
+      align-self: start;
+      width: 100%;
+      padding: clamp(32px, 5vh, 54px) 0 var(--space-5);
+    }
+
+    .instruction {
+      position: relative;
+      margin: 0 0 9px;
+      padding-left: 18px;
+      font-size: clamp(24px, 3.6vw, 38px);
+      line-height: 1.25;
+      font-weight: 650;
+      letter-spacing: -0.025em;
+    }
+
+    .instruction::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 5px;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+
+    .helper {
+      margin: 0 0 clamp(25px, 4vh, 38px) 18px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .class-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .class-button,
+    .number-button,
+    .primary-button {
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--accent-dark);
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .class-button {
+      min-height: 68px;
+      padding: 10px;
+      font-size: clamp(18px, 2.1vw, 22px);
+      border-width: 0;
+      background: var(--accent);
+      color: white;
+      letter-spacing: 0.04em;
+    }
+
+    .class-button[data-grade="初一"] { background: #9d3434; }
+    .class-button[data-grade="初二"] { background: #a95016; }
+    .class-button[data-grade="初三"] { background: #d5a91b; color: #24200f; }
+    .class-button[data-grade="高一"] { background: #347153; }
+    .class-button[data-grade="高二"] { background: #28648a; }
+    .class-button[data-grade="高三"] { background: #684a80; }
+    .class-button:hover { filter: brightness(0.9); }
+    .class-button:active { filter: brightness(0.8); }
+    .number-button:hover { background: var(--accent-soft); }
+    .number-button:active { background: #d4e4eb; }
+
+    .statusbar {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-top: 1px solid var(--rule);
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .status-label {
+      padding: 5px 9px;
+      border-radius: 4px;
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      font-weight: 650;
+    }
+    .statusbar[data-state="offline"], .statusbar[data-state="error"] { color: var(--danger); }
+
+    .dialog-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(28, 36, 43, 0.56);
+    }
+
+    .dialog-layer[hidden] { display: none; }
+
+    .dialog {
+      width: min(760px, 100%);
+      max-height: calc(100vh - 48px);
+      max-height: calc(100dvh - 48px);
+      overflow: auto;
+      border: 0;
+      border-radius: 8px;
+      background: var(--surface);
+      padding: clamp(24px, 4vw, 38px);
+      box-shadow: 0 8px 24px rgba(23, 36, 44, 0.16);
+    }
+
+    .dialog-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .dialog-title { margin: 0; color: var(--accent-dark); font-size: clamp(25px, 4vw, 35px); line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; }
+    .dialog-subtitle { margin: 6px 0 0; color: var(--muted); font-size: 17px; }
+
+    .close-button { width: 48px; flex: 0 0 48px; font-size: 25px; line-height: 1; }
+
+    .number-grid {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .number-button { min-height: 54px; font-size: 18px; font-variant-numeric: tabular-nums; }
+
+    .receipt { text-align: left; }
+    .receipt-message { margin: 0 0 24px; font-size: 19px; }
+    .receipt-list { margin: 0; border-top: 1px solid var(--rule); }
+    .receipt-row { display: grid; grid-template-columns: 90px 1fr; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+    .receipt-row dt { color: var(--muted); }
+    .receipt-row dd { margin: 0; color: var(--accent-dark); font-weight: 650; font-variant-numeric: tabular-nums; }
+
+    .actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px; }
+    .text-button, .primary-button { min-height: 50px; padding: 0 20px; }
+    .primary-button { background: var(--accent); color: white; }
+    .primary-button:hover { background: var(--accent-dark); }
+    .primary-button:disabled { cursor: wait; opacity: 0.65; }
+
+    .countdown { margin: 18px 0 0; color: var(--muted); }
+    .error-text { color: var(--danger); }
+
+    @media (max-width: 900px) {
+      .app { padding-left: 28px; padding-right: 28px; }
+      .topbar { margin-inline: -28px; padding-inline: 28px; }
+      .class-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .number-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 640px) {
+      .app { padding-left: 18px; padding-right: 18px; }
+      .topbar { margin-inline: -18px; padding-inline: 18px; }
+      .topbar { min-height: 76px; }
+      .class-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .number-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .dialog-layer { padding: 12px; }
+      .dialog { max-height: calc(100dvh - 24px); padding: 20px; }
+    }
+
+    @media (max-height: 820px) and (min-width: 700px) {
+      main { padding-top: 26px; padding-bottom: 22px; }
+      .helper { margin-bottom: 20px; }
+      .class-button { min-height: 58px; }
+      .dialog { padding: 24px; }
+      .dialog-header { margin-bottom: 18px; padding-bottom: 14px; }
+      .number-button { min-height: 50px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto; }
+    }
+  </style>
+  <style>
+    :root { --navy:#0b2a66; --blue:#2160f3; --panel:rgba(255,255,255,.78); }
+    html,body { min-height:100%; }
+    body {
+      min-height:100vh; background:#eaf2ff;
+      color:var(--navy); overflow-x:hidden;
+    }
+    body::before,body::after { content:""; position:fixed; z-index:-1; pointer-events:none; }
+    body::before { width:52vw;height:22vw;right:-9vw;top:-12vw;border-radius:0 0 0 100%;background:rgba(255,255,255,.43);transform:rotate(10deg); }
+    body::after { width:48vw;height:26vw;left:-15vw;bottom:-16vw;background:#d9e8ff;transform:rotate(26deg); }
+    .app { width:min(1450px,100%);min-height:100vh;padding:38px 58px 24px;background:transparent;display:block; }
+    .topbar { min-height:128px;margin:0;padding:0;justify-content:center;background:transparent;gap:26px; }
+    .brand-icon { width:94px;height:82px;filter:drop-shadow(0 8px 10px rgba(39,92,207,.18)); }
+    .brand-copy { text-align:center; }
+    .title { color:#09255f;font-size:clamp(34px,4.1vw,57px);font-weight:800;letter-spacing:.06em;text-shadow:0 2px 0 white; }
+    .brand-subtitle { margin:10px 0 0;color:#456797;font-size:clamp(18px,2vw,28px);letter-spacing:.12em; }
+    #fullscreenButton { display:none; }
+    main { width:100%;padding:28px 0 20px;display:grid;grid-template-columns:minmax(0,2.08fr) minmax(360px,1fr);gap:20px; }
+    .selection-panel,.guide-panel { border-radius:30px;background:var(--panel);box-shadow:0 22px 60px rgba(32,42,58,.12);border:1px solid rgba(255,255,255,.95);backdrop-filter:blur(10px); }
+    .selection-panel { padding:30px 26px;overflow:hidden;isolation:isolate; }
+    .class-grid { display:flex;flex-direction:column;gap:17px;min-height:613px; }
+    .transition-old-layer { display:flex;flex-direction:column;gap:17px; }
+    .grade-row { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px; }
+    .class-button { min-height:88px;border-radius:16px;display:grid;place-items:center; }
+    .class-button { padding:8px;font-size:23px;background:#f4f7fc!important;color:inherit!important;border:1px solid transparent;box-shadow:none;transition:background-color 150ms ease,color 150ms ease,transform 150ms ease; }
+    .class-button:hover { filter:none;transform:translateY(-1px);box-shadow:none; }
+    .class-button:active { transform:scale(.97); }
+    .grade-row[data-grade="初一"] { color:#b71f4d; }.grade-row[data-grade="初一"] .class-button { background:#fdeaf1!important; }.grade-row[data-grade="初一"] .class-button:hover { background:#f9d5e2!important; }
+    .grade-row[data-grade="初二"] { color:#d94318; }.grade-row[data-grade="初二"] .class-button { background:#fff0e8!important; }.grade-row[data-grade="初二"] .class-button:hover { background:#ffdfcf!important; }
+    .grade-row[data-grade="初三"] { color:#a95800; }.grade-row[data-grade="初三"] .class-button { background:#fff4d9!important; }.grade-row[data-grade="初三"] .class-button:hover { background:#ffe9b5!important; }
+    .grade-row[data-grade="高一"] { color:#096a62; }.grade-row[data-grade="高一"] .class-button { background:#e7f6f2!important; }.grade-row[data-grade="高一"] .class-button:hover { background:#cfece5!important; }
+    .grade-row[data-grade="高二"] { color:#174fae; }.grade-row[data-grade="高二"] .class-button { background:#e8f0fc!important; }.grade-row[data-grade="高二"] .class-button:hover { background:#d4e3fa!important; }
+    .grade-row[data-grade="高三"] { color:#4e25a8; }.grade-row[data-grade="高三"] .class-button { background:#eee9fa!important; }.grade-row[data-grade="高三"] .class-button:hover { background:#ded3f5!important; }
+    .grade-row { border-radius:16px;background:transparent; }
+    .guide-panel { padding:36px 32px 28px;display:flex;flex-direction:column; }
+    .steps { display:flex;align-items:flex-start;justify-content:center;gap:22px; }
+    .step { text-align:center;color:#91a6c9;font-size:18px;font-weight:650;min-width:90px; }
+    .step-dot { width:54px;height:54px;margin:0 auto 10px;border-radius:50%;display:grid;place-items:center;color:white;background:#a8bad7;font-size:24px;box-shadow:inset 0 2px 6px rgba(255,255,255,.45); }
+    .step.active { color:#0755ef; }.step.active .step-dot { background:#2160f3;box-shadow:0 8px 18px rgba(32,42,58,.16); }
+    .step-line { width:78px;height:3px;margin-top:25px;background:#c6d4e9;border-radius:3px; }
+    .instructions { margin-top:22px;padding:20px 22px;border-radius:16px;background:#e6effd;color:#173666; }
+    .instructions h2 { margin:0 0 12px;font-size:21px;color:#0c2455;display:flex;align-items:center;gap:12px; }
+    .info-icon { width:35px;height:35px;border-radius:50%;display:grid;place-items:center;background:#2866ed;color:#fff;font:700 23px Georgia,serif; }
+    .instructions ol { margin:0;padding-left:24px;font-size:16px;line-height:1.72; }
+    .stats-panel { margin-top:24px;padding-top:22px;border-top:1px solid #d4e1f3; }
+    .today-summary { display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px; }
+    .today-label { color:#58749d;font-size:15px; }.today-count { color:#0b2a66;font-size:46px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.03em; }
+    .today-unit { margin-left:5px;color:#58749d;font-size:16px;font-weight:600; }
+    .ranking-title { margin:0;color:#163867;font-size:18px;font-weight:750; }
+    .ranking-list { margin:0;padding:0;list-style:none;border-top:1px solid #dbe5f3; }
+    .ranking-item { min-height:44px;display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:9px;border-bottom:1px solid #dbe5f3;color:#244970; }
+    .rank-number { width:27px;height:27px;border-radius:8px;display:grid;place-items:center;background:#e4edfb;color:#2e5c9c;font-size:13px;font-weight:800; }
+    .ranking-item:first-child .rank-number { background:#2160f3;color:#fff; }.rank-class{font-weight:750;font-size:16px}.rank-count{font-variant-numeric:tabular-nums;color:#5b769d;font-size:14px;}
+    .student-ranking { margin-top:22px; }.student-ranking .ranking-title{margin-bottom:6px}.stats-note { margin:12px 0 0;color:#7890b2;font-size:12px; }
+    .today-summary .ranking-title { color:#c2410c; }
+    #rankingList { padding:0 10px;border-radius:12px;background:#fff1e8;border-top-color:#f7c7ac; }
+    #rankingList .ranking-item { border-bottom-color:#f7c7ac; }
+    #rankingList .rank-number { background:#fed7c1;color:#9a3412; }
+    #rankingList .ranking-item:first-child .rank-number { background:#c2410c;color:#fff; }
+    #rankingList .rank-count { color:#9a3412; }
+    .student-ranking { padding:12px 10px 0;border-radius:12px;background:#f2ecff; }
+    .student-ranking .ranking-title { color:#5b21b6; }
+    #studentRankingList { border-top-color:#d7c8f5; }
+    #studentRankingList .ranking-item { border-bottom-color:#d7c8f5; }
+    #studentRankingList .rank-number { background:#ddd0f7;color:#5b21b6; }
+    #studentRankingList .ranking-item:first-child .rank-number { background:#5b21b6;color:#fff; }
+    #studentRankingList .rank-count { color:#5b21b6; }
+    .benefits { display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:36px; }
+    .benefit { min-height:118px;display:grid;place-items:center;text-align:center;border-radius:20px;background:rgba(237,244,255,.62);color:#31507d;font-size:16px; }
+    .benefit svg { width:38px;height:38px;stroke:#31507d;fill:none;stroke-width:1.8;margin-bottom:5px; }
+    .statusbar { min-height:42px;border:0;justify-content:center;color:#5d7ba8;font-size:17px;letter-spacing:.06em; }
+    .status-label { display:none; }
+    .statusbar::before,.statusbar::after { content:"";width:100px;height:1px;background:#b9cce8;margin:0 12px; }
+    .dialog { border-radius:24px;background:#f9fbff;box-shadow:0 28px 80px rgba(32,42,58,.2); }
+    .dialog-title { color:#0b2a66; }.number-button,.primary-button { border-color:#2762dd;color:#1647aa;border-radius:12px; }.primary-button { color:#fff;background:#215de6; }
+    .inline-number-view { min-height:594px;display:flex;flex-direction:column; }
+    .inline-number-header { display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 22px;padding:2px 4px 18px;border-bottom:1px solid #d9e5f5; }
+    .inline-number-title { margin:0;font-size:28px;color:#0b2a66; }.inline-number-title span{color:var(--class-color,#2160f3);}
+    .back-classes { min-height:46px;padding:0 18px;border:1px solid #8dacdb;border-radius:12px;background:#f5f9ff;color:#244b85;font-weight:650;cursor:pointer; }
+    .inline-number-view .number-grid { grid-template-columns:repeat(8,minmax(0,1fr));gap:13px; }
+    .inline-number-view .number-button { min-height:72px;background:var(--class-soft,#edf3fc);border-color:var(--class-border,#cad8ed);color:var(--class-color,#1647aa);font-size:21px;box-shadow:none;transition:background-color 150ms ease,color 150ms ease,transform 150ms ease; }
+    .inline-number-view .number-button:hover { background:var(--class-color,#2160f3);color:#fff; }.inline-number-view .number-button:active{transform:scale(.95);}
+    .inline-state { min-height:594px;display:grid;place-items:center;text-align:center;color:#173666; }
+    .inline-state-icon { width:74px;height:74px;margin:0 auto 18px;border-radius:50%;display:grid;place-items:center;background:#2160f3;color:#fff; }
+    .success-mark { width:42px;height:42px;fill:none;stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-linejoin:round; }
+    .success-mark circle { stroke-dasharray:126;stroke-dashoffset:126;animation:drawCircle 340ms cubic-bezier(.16,1,.3,1) forwards; }
+    .success-mark path { stroke-dasharray:36;stroke-dashoffset:36;animation:drawCheck 260ms 210ms cubic-bezier(.16,1,.3,1) forwards; }
+    .inline-state.is-success .inline-state-icon { animation:successSettle 420ms cubic-bezier(.16,1,.3,1) both; }
+    @keyframes drawCircle { to { stroke-dashoffset:0; } }
+    @keyframes drawCheck { to { stroke-dashoffset:0; } }
+    @keyframes successSettle { 0%{transform:scale(.72);opacity:0} 70%{transform:scale(1.06);opacity:1} 100%{transform:scale(1)} }
+    .inline-state h2 { margin:0 0 10px;font-size:34px;color:#0b2a66; }.inline-state p{margin:0;color:#55739f;font-size:20px;}
+    .zoom-controls { position:fixed;right:20px;bottom:18px;z-index:20;display:flex;align-items:center;gap:6px;padding:7px;border-radius:14px;background:rgba(255,255,255,.92);box-shadow:0 10px 28px rgba(32,42,58,.16);border:1px solid #d7e3f4; }
+    .zoom-controls button { width:44px;height:44px;border:0;border-radius:10px;background:#edf4ff;color:#174aa8;font-size:28px;font-weight:700;cursor:pointer;line-height:1; }
+    .zoom-controls button:hover { background:#dce9ff; }.zoom-value{min-width:48px;text-align:center;color:#365782;font-size:14px;font-variant-numeric:tabular-nums;}
+    @media (max-width:1050px) { .app{padding:28px}.topbar{min-height:112px}main{grid-template-columns:1fr}.guide-panel{padding:28px}.benefits{display:none}.instructions{margin-top:22px} }
+    @media (max-width:680px) { .app{padding:18px 12px}.brand-icon{width:62px;height:58px}.title{font-size:29px}.brand-subtitle{font-size:16px}.topbar{gap:12px;min-height:92px}main{padding-top:14px}.selection-panel{padding:15px 12px;border-radius:22px}.class-grid{min-height:0}.class-grid,.transition-old-layer{gap:10px}.grade-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.class-button{min-height:64px;border-radius:12px;font-size:18px}.guide-panel{border-radius:22px}.number-grid,.inline-number-view .number-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.inline-number-view .number-button{min-height:58px}.inline-number-view,.inline-state{min-height:0}.zoom-controls{right:10px;bottom:10px} }
+    @media (prefers-reduced-motion:reduce) { .success-mark circle,.success-mark path,.inline-state.is-success .inline-state-icon{animation-duration:1ms;animation-delay:0ms} }
   </style>
 </head>
 <body>
+  <div class="app">
+    <header class="topbar">
+      <svg class="brand-icon" viewBox="0 0 100 88" aria-hidden="true"><path fill="#3974ef" d="M5 10Q25 3 46 15v61Q26 65 5 74zM95 10Q75 3 54 15v61q20-11 41-2z"/><path d="M10 68q22-8 40 5 18-13 40-5" fill="none" stroke="#ddecff" stroke-width="4" stroke-linecap="round"/></svg>
+      <div class="brand-copy"><h1 class="title">圖書館入館登記</h1><p class="brand-subtitle">請選擇你所在的班級</p></div>
+      <button class="secondary-button" id="fullscreenButton" type="button">進入全螢幕</button>
+    </header>
 
-  <div id="cursor"></div>
+    <main>
+      <section class="selection-panel" aria-label="班級選擇"><div class="class-grid" id="classGrid"></div></section>
+      <aside class="guide-panel">
+        <div>
+          <div class="steps"><div class="step active" id="classStep"><span class="step-dot">1</span>選擇班級</div><span class="step-line"></span><div class="step" id="numberStep"><span class="step-dot">2</span>選擇學號</div></div>
+          <section class="stats-panel" aria-label="今日進館統計">
+            <div class="today-summary"><div><div class="today-label">本月進館人數</div><div><span class="today-count" id="todayCount">—</span><span class="today-unit">人</span></div></div><h2 class="ranking-title">本月班級前三名</h2></div>
+            <ol class="ranking-list" id="rankingList"><li class="ranking-item"><span class="rank-number">1</span><span class="rank-class">讀取中</span><span class="rank-count">—</span></li><li class="ranking-item"><span class="rank-number">2</span><span class="rank-class">—</span><span class="rank-count">—</span></li><li class="ranking-item"><span class="rank-number">3</span><span class="rank-class">—</span><span class="rank-count">—</span></li></ol>
+            <section class="student-ranking"><h2 class="ranking-title">本月個人前三名</h2><ol class="ranking-list" id="studentRankingList"><li class="ranking-item"><span class="rank-number">1</span><span class="rank-class">讀取中</span><span class="rank-count">—</span></li><li class="ranking-item"><span class="rank-number">2</span><span class="rank-class">—</span><span class="rank-count">—</span></li><li class="ranking-item"><span class="rank-number">3</span><span class="rank-class">—</span><span class="rank-count">—</span></li></ol></section>
+            <p class="stats-note" id="statsNote">正在同步 Google 表格…</p>
+          </section>
+        </div>
+      </aside>
+    </main>
 
-  <div id="loader">
-    <div class="loading-zh">氹仔坊眾學校</div>
-    <div class="loading-en">Escola Fong Chong da Taipa</div>
-    <div class="progress-box" id="pBox"><div class="bar" id="bar"></div></div>
-    <button class="start-btn clickable" id="startBtn" onclick="enterSystem()">[ INITIALIZE SYSTEM ]</button>
-    <div class="calibration-hint">* 請將設備豎立正對自己，然後點擊按鈕進入</div>
+    <footer class="statusbar" id="systemStatus" data-state="online" role="status" aria-live="polite">
+      <span class="status-label">系統狀態</span>
+      <span id="networkText">感謝你的配合 · 請自覺遵守圖書館規則</span>
+    </footer>
   </div>
 
-  <canvas id="bg-canvas"></canvas>
+  <div class="zoom-controls" aria-label="畫面縮放">
+    <button id="zoomOut" type="button" aria-label="縮小畫面">−</button><span class="zoom-value" id="zoomValue">100%</span><button id="zoomIn" type="button" aria-label="放大畫面">＋</button>
+  </div>
 
-  <div class="viewport">
-    <section class="page active" data-index="0">
-      <div class="content-box">
-        <span class="tag">01 // ORIGIN // 1966</span>
-        <h1 class="interactive-title clickable" data-text="街坊互助精神" onclick="openPanel('p1')">街坊互助精神</h1>
-        <p class="desc">1966年，為解決離島子弟就學困難，氹仔居民自發籌款創立本校。憑藉愛國愛澳精神，點燃了氹仔坊眾學校的全人教育星火，半個世紀以來始終是社區文化的堅實地標。</p>
+  <div class="dialog-layer" id="dialogLayer" hidden>
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" aria-describedby="dialogSubtitle">
+      <div class="dialog-header">
+        <div>
+          <h2 class="dialog-title" id="dialogTitle">選擇學號</h2>
+          <p class="dialog-subtitle" id="dialogSubtitle"></p>
+        </div>
+        <button class="close-button" id="closeDialog" type="button" aria-label="關閉學號選擇">×</button>
       </div>
-    </section>
-    <section class="page" data-index="1">
-      <div class="content-box">
-        <span class="tag">02 // KINDERGARTEN</span>
-        <h1 class="interactive-title clickable" data-text="K1-K3 啟蒙探究" onclick="openPanel('p2')">K1-K3 啟蒙探究</h1>
-        <p class="desc">打破教室邊界，將社區化作最生動的課堂。帶領幼兒走進街市認識蔬果、前往公園親近自然。透過趣味編程啟蒙與榨果汁等生活實作，在快樂探究中建立認知與獨立人格。</p>
-      </div>
-    </section>
-    <section class="page" data-index="2">
-      <div class="content-box">
-        <span class="tag">03 // PRIMARY</span>
-        <h1 class="interactive-title clickable" data-text="P1-P6 多元底座" onclick="openPanel('p3')">P1-P6 多元底座</h1>
-        <p class="desc">全面推行「閱讀閱開心」計劃，夯實語文基礎。實施英語與數學分組分層教學，確保每位學子皆能跟上進度。透過多元社團活動與《基本法》推廣，培養五育並重的社會小公民。</p>
-      </div>
-    </section>
-    <section class="page" data-index="3">
-      <div class="content-box">
-        <span class="tag">04 // SECONDARY</span>
-        <h1 class="interactive-title clickable" data-text="走班學習與智慧平台" onclick="openPanel('p4')">走班學習與智慧平台</h1>
-        <p class="desc">初中部率先實施「走班學習」模式，精準對接學生能力。全面引入智慧教學平台，大數據實時監測學習軌跡，提供個性化輔導方案，賦能高效自主學習。</p>
-      </div>
-    </section>
-    <section class="page" data-index="4">
-      <div class="content-box">
-        <span class="tag">05 // STEAM & AI</span>
-        <h1 class="interactive-title clickable" data-text="人工智能與創客體系" onclick="openPanel('p5')">人工智能與創客體系</h1>
-        <p class="desc">紮根未來，從小學到中學系統性引入 AI 與 STEAM 課程。在專屬 Maker Space 創客實驗室中，學子將理論化為實物，於國際發明展與全國機器人大賽中屢奪金獎。</p>
-      </div>
-    </section>
-    <section class="page" data-index="5">
-      <div class="content-box">
-        <span class="tag">06 // PHILOSOPHY</span>
-        <h1 class="interactive-title clickable" data-text="明禮進取·全人發展" onclick="openPanel('p6')">明禮進取·全人發展</h1>
-        <p class="desc">秉持「明禮、進取、勤奮、創新」校訓。德育為先，透過豐富的社會實踐培養責任感；英文拔尖班輔導雅思達標，為學生搭建通往國際頂尖學府的橋樑。</p>
-      </div>
-    </section>
-    <section class="page" data-index="6">
-      <div class="content-box" style="max-width: 1000px;">
-        <span class="tag">07 // SYSTEM LOGS</span>
-        <h1 class="interactive-title" data-text="全校榮耀矩陣">全校榮耀矩陣</h1>
-        <p class="desc">探索 FCT 歷年來在科技、學術與體育領域的輝煌成就。</p>
-        <button class="action-btn clickable" onclick="window.open('https://www.fctweb.org', '_blank')">[ ENTER OFFICIAL SITE ]</button>
-        <div class="matrix-wrap" id="matrix"></div>
-      </div>
+      <div id="dialogContent"></div>
     </section>
   </div>
 
-  <div class="side-panel" id="sidePanel">
-    <div class="close-btn clickable" onclick="closePanel()">[ CLOSE ]</div>
-    <div id="panelContent"></div>
-  </div>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-    // --- 1. 系統加載與 Gyro 邏輯 (終極防抽風版) ---
-    let progress = 0;
-    const loadingInterval = setInterval(() => {
-      progress += Math.random() * 15;
-      if (progress >= 100) {
-        progress = 100; clearInterval(loadingInterval);
-        setTimeout(() => { document.getElementById('pBox').style.opacity = '0'; document.getElementById('startBtn').classList.add('ready'); }, 400);
+    (() => {
+      "use strict";
+
+      const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLScPUl_1_o3XPVEPljqI9fhOFXknc3nK9puWNWGzosvfVPs84g/formResponse";
+      const CLASS_ENTRY_NAME = "entry.842011085";
+      const STUDENT_ENTRY_NAME = "entry.985173266";
+      const QUEUE_KEY = "library-entry-submit-queue-v1";
+      const SHEET_QUERY_URL = "https://docs.google.com/spreadsheets/d/1QffyxRAl7kxuoRi8083D5FLO-DrFbVKs8zdomlLyY20/gviz/tq";
+      const CLASSES = [
+        "初一甲", "初一乙", "初一丙", "初一丁",
+        "初二甲", "初二乙", "初二丙", "初二丁",
+        "初三甲", "初三乙", "初三丙", "初三丁",
+        "高一甲", "高一乙", "高一丙",
+        "高二甲", "高二乙", "高二丙",
+        "高三甲", "高三乙"
+      ];
+      const CLASS_THEMES = {
+        "初一甲": ["#a91f50","#fdeaf1","#efbfd0"], "初一乙": ["#bd304e","#fcebee","#efc1ca"],
+        "初一丙": ["#c94728","#fff0ea","#f1c5b8"], "初一丁": ["#a95816","#fff1e6","#ebc9ad"],
+        "初二甲": ["#9a6500","#fff4d8","#ead39b"], "初二乙": ["#777000","#f8f5d9","#d9d39c"],
+        "初二丙": ["#4c751e","#eff6df","#c9dba7"], "初二丁": ["#187044","#e7f5eb","#b7dac7"],
+        "初三甲": ["#087168","#e5f6f3","#b4dcd6"], "初三乙": ["#006b83","#e4f3f7","#afd4de"],
+        "初三丙": ["#185ba5","#e9f1fb","#b9cfeb"], "初三丁": ["#3e51ab","#eceffc","#c1c8eb"],
+        "高一甲": ["#6040a9","#f0ecfb","#ccc1e9"], "高一乙": ["#773991","#f5ebf8","#d9bfe1"],
+        "高一丙": ["#963170","#faeaf3","#e6bdd3"], "高二甲": ["#a33a58","#fbecef","#e7c2cc"],
+        "高二乙": ["#8d4b22","#f9efe8","#dfc8b8"], "高二丙": ["#696132","#f4f2e7","#d7d2b8"],
+        "高三甲": ["#356b50","#eaf4ee","#bdd6c7"], "高三乙": ["#3b6288","#eaf0f6","#bdcedd"]
+      };
+
+      const classGrid = document.getElementById("classGrid");
+      const dialogLayer = document.getElementById("dialogLayer");
+      const dialogTitle = document.getElementById("dialogTitle");
+      const dialogSubtitle = document.getElementById("dialogSubtitle");
+      const dialogContent = document.getElementById("dialogContent");
+      const closeDialogButton = document.getElementById("closeDialog");
+      const fullscreenButton = document.getElementById("fullscreenButton");
+      const systemStatus = document.getElementById("systemStatus");
+      const networkText = document.getElementById("networkText");
+      const classStep = document.getElementById("classStep");
+      const numberStep = document.getElementById("numberStep");
+      const zoomValue = document.getElementById("zoomValue");
+      const todayCount = document.getElementById("todayCount");
+      const rankingList = document.getElementById("rankingList");
+      const studentRankingList = document.getElementById("studentRankingList");
+      const statsNote = document.getElementById("statsNote");
+
+      let selectedClass = "";
+      let selectedNumber = null;
+      let previousFocus = null;
+      let confirmationTimer = null;
+      let confirmationSeconds = 3;
+      let isSubmitting = false;
+      let resetTimer = null;
+      let interfaceZoom = Number(localStorage.getItem("library-interface-zoom") || 100);
+      let statsRequestInFlight = false;
+
+      function createClassView() {
+        const view = document.createElement("div");
+        view.className = "transition-old-layer";
+        ["初一","初二","初三","高一","高二","高三"].forEach((grade) => {
+          const row = document.createElement("div");
+          row.className = "grade-row";
+          row.dataset.grade = grade;
+          CLASSES.filter((name) => name.startsWith(grade)).forEach((className) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "class-button";
+            button.textContent = className;
+            button.addEventListener("click", () => openNumberDialog(className, button));
+            row.appendChild(button);
+          });
+          view.appendChild(row);
+        });
+        return view;
       }
-      document.getElementById('bar').style.width = progress + '%';
-    }, 80);
 
-    let isCalibrated = false;
-    let baseX = 0, baseY = 0;
-    let targetMouseX = 0; let targetMouseY = 0; let mouseX = 0; let mouseY = 0;
-
-    function enterSystem() {
-      isCalibrated = false; 
-      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        DeviceOrientationEvent.requestPermission()
-          .then(permissionState => { if (permissionState === 'granted') { window.addEventListener('deviceorientation', handleGyro, true); } })
-          .catch(console.error);
-      } else { window.addEventListener('deviceorientation', handleGyro, true); }
-      document.getElementById('loader').style.opacity = '0';
-      setTimeout(() => document.getElementById('loader').style.display = 'none', 1000);
-    }
-
-    function handleGyro(e) {
-      if (document.getElementById('sidePanel').classList.contains('open')) return;
-      
-      // 獲取當前設備方向 (0=直屏, 90或-90=橫屏)
-      let orientation = window.orientation || (screen.orientation && screen.orientation.angle) || 0;
-      
-      // 獲取原始姿態數據 (放棄 Alpha 羅盤，避免 Gimbal Lock 導致的暴衝)
-      let rawX = e.gamma || 0; // 物理左右傾斜
-      let rawY = e.beta || 0;  // 物理前後傾斜
-      
-      let x = 0, y = 0;
-      
-      // 根據橫直屏重新映射座標軸
-      if (Math.abs(orientation) === 90) {
-        let sign = orientation === 90 ? 1 : -1;
-        x = rawY * sign;
-        y = -rawX * sign;
-      } else {
-        x = rawX;
-        y = rawY;
+      function renderClasses() {
+        classStep.classList.add("active");
+        numberStep.classList.remove("active");
+        classGrid.replaceChildren(createClassView());
       }
 
-      // 第一次進入時設定基準點
-      if (!isCalibrated) {
-        baseX = x; baseY = y;
-        isCalibrated = true; return;
+      async function slideContentTogether(nextView, direction = "forward") {
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reducedMotion) {
+          classGrid.replaceChildren(nextView);
+          return;
+        }
+        const currentHeight = classGrid.getBoundingClientRect().height;
+        const oldLayer = document.createElement("div");
+        const nextLayer = document.createElement("div");
+        oldLayer.className = "transition-old-layer";
+        oldLayer.style.cssText = "position:absolute;inset:0;width:100%;";
+        const enteringFrom = direction === "back" ? "calc(-100% - 42px)" : "calc(100% + 42px)";
+        const exitingTo = direction === "back" ? "calc(100% + 42px)" : "calc(-100% - 42px)";
+        nextLayer.style.cssText = `position:absolute;inset:0;width:100%;transform:translateX(${enteringFrom});`;
+        oldLayer.append(...Array.from(classGrid.childNodes));
+        nextLayer.appendChild(nextView);
+        classGrid.replaceChildren(oldLayer, nextLayer);
+        classGrid.style.position = "relative";
+        classGrid.style.height = `${Math.max(currentHeight, nextLayer.scrollHeight)}px`;
+        classGrid.style.pointerEvents = "none";
+        const exit = oldLayer.animate(
+          [{ transform:"translateX(0)" }, { transform:`translateX(${exitingTo})` }],
+          { duration:360, easing:"cubic-bezier(.7,0,.3,1)", fill:"forwards" }
+        );
+        const enter = nextLayer.animate(
+          [{ transform:`translateX(${enteringFrom})` }, { transform:"translateX(0)" }],
+          { duration:360, easing:"cubic-bezier(.7,0,.3,1)", fill:"forwards" }
+        );
+        await Promise.all([exit.finished, enter.finished]).catch(() => {});
+        classGrid.replaceChildren(nextView);
+        classGrid.style.position = "";
+        classGrid.style.height = "";
+        classGrid.style.pointerEvents = "";
       }
 
-      // 計算偏移量
-      let deltaX = x - baseX;
-      let deltaY = y - baseY;
+      async function openNumberDialog(className, trigger) {
+        clearTimers();
+        selectedClass = className;
+        selectedNumber = null;
+        previousFocus = trigger;
+        classStep.classList.remove("active");
+        numberStep.classList.add("active");
 
-      // 防止跨越 -180/180 邊界時數值跳變
-      if (deltaX > 90) deltaX -= 180; else if (deltaX < -90) deltaX += 180;
-      if (deltaY > 90) deltaY -= 180; else if (deltaY < -90) deltaY += 180;
+        const grid = document.createElement("div");
+        grid.className = "number-grid";
+        grid.setAttribute("aria-label", `${className}學號選擇`);
+        for (let number = 1; number <= 40; number += 1) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "number-button";
+          button.textContent = number;
+          button.setAttribute("aria-label", `${number}號`);
+          button.addEventListener("click", () => showConfirmation(number));
+          grid.appendChild(button);
+        }
+        const view = document.createElement("div");
+        view.className = "inline-number-view";
+        const theme = CLASS_THEMES[className] || ["#2160f3","#edf3fc","#cad8ed"];
+        view.style.setProperty("--class-color", theme[0]);
+        view.style.setProperty("--class-soft", theme[1]);
+        view.style.setProperty("--class-border", theme[2]);
+        view.innerHTML = `<div class="inline-number-header"><h2 class="inline-number-title">選擇 <span>${escapeHtml(className)}</span> 學號</h2><button class="back-classes" type="button">返回班級</button></div>`;
+        view.querySelector(".back-classes").addEventListener("click", returnToClassesAnimated);
+        view.appendChild(grid);
+        await slideContentTogether(view);
+        requestAnimationFrame(() => grid.querySelector("button")?.focus());
+      }
 
-      // 限制視角的移動極限 (最大 1.2，避免攝影機跑太遠導致 DNA 看起來像傾斜)
-      targetMouseX = Math.max(-1.2, Math.min(1.2, deltaX / 25));
-      targetMouseY = Math.max(-1.2, Math.min(1.2, deltaY / 25));
-    }
+      async function returnToClassesAnimated() {
+        clearTimers();
+        classStep.classList.add("active");
+        numberStep.classList.remove("active");
+        selectedClass = "";
+        selectedNumber = null;
+        await slideContentTogether(createClassView(), "back");
+        classGrid.querySelector("button")?.focus();
+        updateNetworkStatus();
+      }
 
-    // --- 2. 滑鼠適配與 UI 邏輯 ---
-    const cursor = document.getElementById('cursor');
-    if (window.matchMedia("(pointer: fine)").matches) {
-      document.addEventListener('mousemove', e => {
-        cursor.style.left = e.clientX + 'px'; cursor.style.top = e.clientY + 'px';
-        targetMouseX = (e.clientX / window.innerWidth) * 2 - 1;
-        targetMouseY = -(e.clientY / window.innerHeight) * 2 + 1;
-        
-        document.querySelectorAll('.interactive-title').forEach(title => {
-          const rect = title.getBoundingClientRect();
-          if(e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
-            title.style.setProperty('--x', (e.clientX - rect.left) + 'px'); title.style.setProperty('--y', (e.clientY - rect.top) + 'px');
-          } else {
-            title.style.setProperty('--x', '-100px'); title.style.setProperty('--y', '-100px');
+      function showConfirmation(number) {
+        clearTimers();
+        selectedNumber = number;
+        submitSelection();
+      }
+
+      function submitSelection() {
+        if (isSubmitting || !selectedClass || selectedNumber === null) return;
+        clearConfirmationTimer();
+        isSubmitting = true;
+        const record = { className: selectedClass, number: selectedNumber, createdAt: Date.now() };
+        showSuccess(record);
+        isSubmitting = false;
+        postRecord(record)
+          .then(() => {
+            flushQueue();
+            window.setTimeout(loadStats, 3500);
+            window.setTimeout(loadStats, 10000);
+          })
+          .catch(() => {
+            enqueue(record);
+            setStatus(navigator.onLine ? "online" : "offline", navigator.onLine ? "登記已接收，背景同步中" : "暫時離線，記錄將在恢復連線後提交");
+          });
+      }
+
+      function postRecord(record) {
+        return new Promise((resolve, reject) => {
+          if (!navigator.onLine) {
+            reject(new Error("offline"));
+            return;
+          }
+          const frameName = `google-form-target-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const iframe = document.createElement("iframe");
+          iframe.name = frameName;
+          iframe.title = "Google Forms submission target";
+          iframe.hidden = true;
+          const form = document.createElement("form");
+          form.action = FORM_ACTION;
+          form.method = "POST";
+          form.target = frameName;
+          form.hidden = true;
+
+          [[CLASS_ENTRY_NAME, record.className], [STUDENT_ENTRY_NAME, String(record.number)]].forEach(([name, value]) => {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
+          });
+
+          let timeoutId;
+          let settled = false;
+          const cleanup = () => {
+            window.clearTimeout(timeoutId);
+            window.setTimeout(() => { iframe.remove(); form.remove(); }, 1000);
+          };
+          iframe.addEventListener("load", () => {
+            iframe.addEventListener("load", () => {
+              if (settled) return;
+              settled = true;
+              cleanup();
+              resolve();
+            }, { once: true });
+            document.body.appendChild(form);
+            timeoutId = window.setTimeout(() => {
+              if (settled) return;
+              settled = true;
+              cleanup();
+              reject(new Error("submission-unconfirmed"));
+            }, 8000);
+            try {
+              form.submit();
+            } catch (error) {
+              settled = true;
+              cleanup();
+              reject(error);
+            }
+          }, { once: true });
+          iframe.src = "about:blank";
+          document.body.appendChild(iframe);
+        });
+      }
+
+      function showSuccess(record) {
+        classGrid.innerHTML = `<div class="inline-state is-success" role="status" aria-live="polite"><div><div class="inline-state-icon"><svg class="success-mark" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20"/><path d="M14 24.5l6.5 6.5L35 16.5"/></svg></div><h2>提交成功</h2><p>${escapeHtml(record.className)} · ${record.number} 號</p></div></div>`;
+        setStatus("online", "登記已送出，系統在線");
+        resetTimer = window.setTimeout(resetToClasses, 800);
+      }
+
+      function showQueued(record) {
+        classGrid.innerHTML = `<div class="inline-state" role="status" aria-live="polite"><div><div class="inline-state-icon">✓</div><h2>已暫存登記</h2><p>網路恢復後將自動提交</p></div></div>`;
+        setStatus("offline", "暫時離線，記錄將在恢復連線後提交");
+        resetTimer = window.setTimeout(resetToClasses, 800);
+      }
+
+      function showError(message = "登記未送出，已保留目前選擇。") {
+        classGrid.innerHTML = `<div class="inline-state"><div><div class="inline-state-icon" style="background:#b43a3a">!</div><h2>提交失敗</h2><p class="error-text">${escapeHtml(message)}</p><div class="actions"><button class="text-button" id="editSelection" type="button">返回學號</button><button class="primary-button" id="retrySubmit" type="button">重試提交</button></div></div></div>`;
+        document.getElementById("editSelection")?.addEventListener("click", () => openNumberDialog(selectedClass, previousFocus));
+        document.getElementById("retrySubmit")?.addEventListener("click", submitSelection);
+        setStatus("error", "提交失敗，請重試或聯絡老師");
+        document.getElementById("retrySubmit")?.focus();
+      }
+
+      function receiptMarkup(record, time, note, isError) {
+        return `<div class="receipt">
+          <p class="receipt-message${isError ? " error-text" : ""}">${note}</p>
+          <dl class="receipt-list">
+            <div class="receipt-row"><dt>班級</dt><dd>${escapeHtml(record.className)}</dd></div>
+            <div class="receipt-row"><dt>學號</dt><dd>${record.number} 號</dd></div>
+            <div class="receipt-row"><dt>時間</dt><dd>${time}</dd></div>
+          </dl>
+        </div>`;
+      }
+
+      function enqueue(record) {
+        try {
+          const queue = readQueue();
+          queue.push(record);
+          localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+          return readQueue().some((item) => item.createdAt === record.createdAt);
+        } catch (error) {
+          return false;
+        }
+      }
+
+      function readQueue() {
+        try {
+          const value = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+          return Array.isArray(value) ? value : [];
+        } catch (error) {
+          return [];
+        }
+      }
+
+      async function flushQueue() {
+        if (!navigator.onLine) return;
+        const queue = readQueue();
+        if (!queue.length) return;
+        const remaining = [];
+        for (const record of queue) {
+          try { await postRecord(record); } catch (error) { remaining.push(record); }
+        }
+        try {
+          localStorage.setItem(QUEUE_KEY, JSON.stringify(remaining));
+        } catch (error) {
+          setStatus("error", "離線記錄無法更新，請聯絡老師");
+        }
+      }
+
+      function updateNetworkStatus() {
+        if (navigator.onLine) {
+          setStatus("online", "感謝你的配合 · 請自覺遵守圖書館規則");
+          flushQueue();
+        } else {
+          setStatus("offline", "暫時離線，記錄將在恢復連線後提交");
+        }
+      }
+
+      function setStatus(state, message) {
+        systemStatus.dataset.state = state;
+        networkText.textContent = message;
+      }
+
+      function closeDialog() {
+        if (isSubmitting) return;
+        clearTimers();
+        dialogLayer.hidden = true;
+        document.body.style.overflow = "";
+        previousFocus?.focus();
+      }
+
+      function resetToClasses() {
+        clearTimers();
+        dialogLayer.hidden = true;
+        document.body.style.overflow = "";
+        selectedClass = "";
+        selectedNumber = null;
+        renderClasses();
+        classGrid.querySelector("button")?.focus();
+        updateNetworkStatus();
+      }
+
+      function applyInterfaceZoom() {
+        interfaceZoom = Math.min(130, Math.max(70, interfaceZoom));
+        document.querySelector(".app").style.zoom = `${interfaceZoom}%`;
+        zoomValue.textContent = `${interfaceZoom}%`;
+        localStorage.setItem("library-interface-zoom", String(interfaceZoom));
+      }
+
+      function parseCsv(text) {
+        const rows = [];
+        let row = [], field = "", quoted = false;
+        for (let index = 0; index < text.length; index += 1) {
+          const character = text[index];
+          if (quoted) {
+            if (character === '"' && text[index + 1] === '"') { field += '"'; index += 1; }
+            else if (character === '"') quoted = false;
+            else field += character;
+          } else if (character === '"') quoted = true;
+          else if (character === ',') { row.push(field); field = ""; }
+          else if (character === '\n') { row.push(field.replace(/\r$/, "")); rows.push(row); row = []; field = ""; }
+          else field += character;
+        }
+        if (field || row.length) { row.push(field.replace(/\r$/, "")); rows.push(row); }
+        return rows;
+      }
+
+      function timestampDay(value) {
+        const match = String(value || "").trim().match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+        return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
+      }
+
+      function renderStats(rows) {
+        const now = new Date();
+        const currentMonth = [now.getFullYear(), now.getMonth() + 1];
+        const monthRows = rows.slice(1).filter((row) => {
+          const day = timestampDay(row[0]);
+          return day && day.slice(0, 2).every((value, index) => value === currentMonth[index]);
+        });
+        const classCounts = new Map();
+        const studentCounts = new Map();
+        monthRows.forEach((row) => {
+          const className = String(row[1] || "").trim();
+          const studentNumber = String(row[2] || "").trim();
+          if (!CLASSES.includes(className)) return;
+          classCounts.set(className, (classCounts.get(className) || 0) + 1);
+          if (/^([1-9]|[1-3]\d|40)$/.test(studentNumber)) {
+            const key = `${className}\u0000${studentNumber}`;
+            studentCounts.set(key, (studentCounts.get(key) || 0) + 1);
           }
         });
-      });
-    }
-
-    const detailData = { p1: { title: "創校沿革", text: "半世紀前，氹仔居民有感於子弟跨海求學之艱辛，遂自發組織籌建學校。這份『我為人人，人人為我』的街坊互助精神，至今仍是 FCT 最寶貴的文化基因。" }, p2: { title: "探究式啟蒙", text: "我們摒棄傳統的填鴨式教學，採用主題式探究。例如帶領幼兒走訪消防局、街市；或引導幼兒進行垃圾分類實作，讓知識從生活中長出來。" }, p3: { title: "多元基礎教育", text: "小學部致力於打穩學術與品格的雙重底座。針對語文能力推行閱讀獎勵計劃；針對數理邏輯引入珠心算。此外超過三十種課外社團，讓每位學生找到閃光點。" }, p4: { title: "智慧中學體系", text: "初中部實施『走班學習』，讓學生在核心科目上根據自身程度進入最適合的班級。同時引入先進智慧教學平台，實現精準教學。" }, p5: { title: "創客與 AI 搖籃", text: "設有專屬 Maker Space。從基礎的 3D 列印到進階的 VEX 機器人、AI算法，學生將想像化為實體，屢獲國際大獎。" }, p6: { title: "全人發展理念", text: "『明禮』教導尊重，『進取』追求卓越。從校內服務到國際志工，我們致力於培養具有家國情懷與國際視野的未來領袖。" } };
-    function openPanel(id) { document.querySelector('.page.active .content-box').classList.add('shrink'); document.getElementById('panelContent').innerHTML = `<h2 class="panel-title">${detailData[id].title}</h2><p class="panel-text">${detailData[id].text}</p>`; document.getElementById('sidePanel').classList.add('open'); }
-    function closePanel() { document.querySelector('.page.active .content-box').classList.remove('shrink'); document.getElementById('sidePanel').classList.remove('open'); }
-
-    // --- 3. 觸控與滑動翻頁 ---
-    const pages = document.querySelectorAll('.page');
-    const scrollPerNode = 1000; 
-    const maxScroll = (pages.length - 1) * scrollPerNode;
-    let targetScroll = 0; let virtualScroll = 0; let curPage = 0;
-
-    window.addEventListener('wheel', (e) => {
-      if (document.getElementById('sidePanel').classList.contains('open')) return;
-      targetScroll += e.deltaY * 1.2; 
-      targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
-    });
-
-    let touchStartY = 0;
-    window.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
-    window.addEventListener('touchmove', (e) => {
-      if (document.getElementById('sidePanel').classList.contains('open')) return;
-      let deltaY = touchStartY - e.touches[0].clientY; 
-      targetScroll += deltaY * 2.5; 
-      targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
-      touchStartY = e.touches[0].clientY; 
-    }, { passive: true });
-
-    // --- 4. 3D 場景構建 ---
-    const canvas = document.getElementById('bg-canvas');
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-    const dustGeo = new THREE.BufferGeometry();
-    const dustPos = new Float32Array(4500);
-    for(let i=0; i<4500; i++) dustPos[i] = (Math.random() - 0.5) * 800;
-    dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
-    const dustMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, transparent: true, opacity: 0.4 });
-    const dustSystem = new THREE.Points(dustGeo, dustMat);
-    scene.add(dustSystem);
-
-    const dnaGeo = new THREE.BufferGeometry();
-    const dnaPos = new Float32Array(18000 * 3);
-    const radius = 40; const spreadY = 3500; // DNA 總高度
-    for(let i=0; i<18000; i++) {
-      const type = Math.random();
-      let t = (Math.random() - 0.5) * spreadY; 
-      let angle = t * 0.04; let x, y, z;
-      if(type < 0.35) { x = Math.cos(angle)*radius; z = Math.sin(angle)*radius; y = t; }
-      else if (type < 0.70) { x = Math.cos(angle+Math.PI)*radius; z = Math.sin(angle+Math.PI)*radius; y = t; }
-      else { const rungT = Math.floor(t/12)*12; const rungAngle = rungT*0.04; const lerp = Math.random(); x = Math.cos(rungAngle)*radius + (Math.cos(rungAngle+Math.PI)*radius - Math.cos(rungAngle)*radius)*lerp; z = Math.sin(rungAngle)*radius + (Math.sin(rungAngle+Math.PI)*radius - Math.sin(rungAngle)*radius)*lerp; y = rungT; }
-      dnaPos[i*3] = x+(Math.random()-0.5)*3; dnaPos[i*3+1] = y+(Math.random()-0.5)*3; dnaPos[i*3+2] = z+(Math.random()-0.5)*3;
-    }
-    dnaGeo.setAttribute('position', new THREE.BufferAttribute(dnaPos, 3));
-    const dnaMat = new THREE.PointsMaterial({ size: 1.5, color: 0x00ffff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
-    const dnaSystem = new THREE.Points(dnaGeo, dnaMat);
-    scene.add(dnaSystem);
-
-    let baseRotation = 0;
-    let currentTwist = 0;
-
-    // --- 5. 渲染與動畫循環 ---
-    function animate() {
-      requestAnimationFrame(animate);
-      virtualScroll += (targetScroll - virtualScroll) * 0.08;
-      mouseX += (targetMouseX - mouseX) * 0.1;
-      mouseY += (targetMouseY - mouseY) * 0.1;
-
-      // 攝影機沿 Y 軸像搭電梯一樣往下走
-      let camBaseY = -virtualScroll * 0.15; 
-      
-      // 攝影機真實平移 (Pan)
-      camera.position.x = mouseX * 50;           
-      camera.position.y = camBaseY + (mouseY * 40); 
-      camera.position.z = 240 + (Math.abs(mouseX) * 10); 
-
-      // 攝影機看向前方稍微偏移的位置 (Parallax)
-      camera.lookAt(mouseX * 15, camBaseY + (mouseY * 15), 0);
-
-      // DNA 只在中心自轉，不隨設備傾斜
-      let scrollVelocity = targetScroll - virtualScroll; 
-      let targetTwist = scrollVelocity * 0.002;
-      currentTwist += (targetTwist - currentTwist) * 0.05; 
-      baseRotation -= 0.0015; 
-      dnaSystem.rotation.y = baseRotation - currentTwist;
-      
-      // 鎖死 DNA 的 X 和 Z 軸旋轉，確保永遠垂直
-      dnaSystem.rotation.x = 0;
-      dnaSystem.rotation.z = 0;
-
-      // 星塵稍微聯動
-      dustSystem.position.y = camBaseY * 0.5;
-
-      let calculatedPage = Math.round(virtualScroll / scrollPerNode);
-      if (calculatedPage !== curPage) {
-        pages[curPage].classList.remove('active');
-        curPage = calculatedPage;
-        pages[curPage].classList.add('active');
-        if(curPage === 6) { startMatrixLogs(); } else { stopMatrixLogs(); }
+        const sortRanking = (map) => [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-Hant")).slice(0, 3);
+        const classRanking = sortRanking(classCounts);
+        const studentRanking = sortRanking(studentCounts).map(([key, count]) => {
+          const [className, studentNumber] = key.split("\u0000");
+          return [`${className} · ${studentNumber} 號`, count];
+        });
+        function fillRanking(list, ranking, unit) {
+          list.replaceChildren(...[0, 1, 2].map((index) => {
+          const item = document.createElement("li");
+          item.className = "ranking-item";
+          const result = ranking[index];
+          item.innerHTML = `<span class="rank-number">${index + 1}</span><span class="rank-class"></span><span class="rank-count"></span>`;
+          item.querySelector(".rank-class").textContent = result ? result[0] : "—";
+          item.querySelector(".rank-count").textContent = result ? `${result[1]} ${unit}` : "—";
+          return item;
+          }));
+        }
+        todayCount.textContent = String(monthRows.length);
+        fillRanking(rankingList, classRanking, "人");
+        fillRanking(studentRankingList, studentRanking, "次");
+        statsNote.textContent = `已同步 · ${new Intl.DateTimeFormat("zh-Hant", { hour:"2-digit", minute:"2-digit", hour12:false }).format(now)}`;
       }
-      renderer.render(scene, camera);
-    }
-    animate();
 
-    // --- 6. 矩陣日誌系統 ---
-    const logs = [ "2023 WRO國際機械人賽 澳門區金獎", "全國青少年科技創新大賽 一等獎", "澳門學界田徑比賽 男子A組團體總冠軍" ];
-    const matrixBox = document.getElementById('matrix');
-    let logInterval = null; let logIndex = 0;
-    function startMatrixLogs() { if (logInterval) return; matrixBox.innerHTML = ''; logInterval = setInterval(() => { const div = document.createElement('div'); div.className = 'log-line'; const hex = Math.random().toString(16).substring(2, 8).toUpperCase(); div.innerHTML = `[SYS.LOG.0x${hex}] ARCHIVE SYNC >> <span>${logs[logIndex % logs.length]}</span>`; matrixBox.appendChild(div); logIndex++; matrixBox.scrollTop = matrixBox.scrollHeight; if (matrixBox.childElementCount > 40) matrixBox.removeChild(matrixBox.firstChild); }, 150); }
-    function stopMatrixLogs() { clearInterval(logInterval); logInterval = null; }
-    
-    // 監聽視窗重置大小
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+      async function loadStats() {
+        if (statsRequestInFlight) return;
+        statsRequestInFlight = true;
+        const callbackName = `__libraryStats_${Date.now()}`;
+        const script = document.createElement("script");
+        const timeoutId = window.setTimeout(fail, 12000);
+        function cleanup() {
+          window.clearTimeout(timeoutId);
+          script.remove();
+          delete window[callbackName];
+          statsRequestInFlight = false;
+        }
+        function fail() {
+          cleanup();
+          statsNote.textContent = "統計暫時無法更新，稍後自動重試";
+        }
+        window[callbackName] = (response) => {
+          try {
+            if (!response?.table?.rows) throw new Error("invalid-stats");
+            const header = response.table.cols.map((column) => column.label || column.id || "");
+            const rows = response.table.rows.map((row) => row.c.map((cell) => cell?.f ?? cell?.v ?? ""));
+            renderStats([header, ...rows]);
+            cleanup();
+          } catch (error) { fail(); }
+        };
+        script.onerror = fail;
+        const tqx = `out:json;responseHandler:${callbackName}`;
+        script.src = `${SHEET_QUERY_URL}?headers=1&tqx=${encodeURIComponent(tqx)}&_=${Date.now()}`;
+        document.head.appendChild(script);
+      }
+
+      function clearConfirmationTimer() {
+        if (confirmationTimer !== null) window.clearInterval(confirmationTimer);
+        confirmationTimer = null;
+      }
+
+      function clearTimers() {
+        clearConfirmationTimer();
+        if (resetTimer !== null) window.clearTimeout(resetTimer);
+        resetTimer = null;
+      }
+
+      function formatTime(date) {
+        return new Intl.DateTimeFormat("zh-Hant", {
+          year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", second: "2-digit",
+          hour12: false
+        }).format(date);
+      }
+
+      function escapeHtml(value) {
+        const span = document.createElement("span");
+        span.textContent = value;
+        return span.innerHTML;
+      }
+
+      async function toggleFullscreen() {
+        try {
+          if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.();
+          else await document.exitFullscreen?.();
+        } catch (error) {
+          setStatus("error", "無法進入全螢幕，仍可繼續登記");
+        }
+      }
+
+      function updateFullscreenLabel() {
+        fullscreenButton.textContent = document.fullscreenElement ? "退出全螢幕" : "進入全螢幕";
+      }
+
+      function trapDialogFocus(event) {
+        if (event.key !== "Tab" || dialogLayer.hidden) return;
+        const focusable = [...dialogLayer.querySelectorAll("button:not([hidden]):not([disabled])")];
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+
+      closeDialogButton.addEventListener("click", closeDialog);
+      dialogLayer.addEventListener("click", (event) => { if (event.target === dialogLayer) closeDialog(); });
+      fullscreenButton.addEventListener("click", toggleFullscreen);
+      document.addEventListener("fullscreenchange", updateFullscreenLabel);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !dialogLayer.hidden) closeDialog();
+        trapDialogFocus(event);
+      });
+      window.addEventListener("online", updateNetworkStatus);
+      window.addEventListener("offline", updateNetworkStatus);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) loadStats(); });
+      document.getElementById("zoomOut").addEventListener("click", () => { interfaceZoom -= 10; applyInterfaceZoom(); });
+      document.getElementById("zoomIn").addEventListener("click", () => { interfaceZoom += 10; applyInterfaceZoom(); });
+
+      renderClasses();
+      updateNetworkStatus();
+      applyInterfaceZoom();
+      loadStats();
+      window.setInterval(loadStats, 500);
+    })();
   </script>
 </body>
 </html>

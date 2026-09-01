@@ -1,750 +1,950 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>圖書館進館統計</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f3f1ec">
+  <title>圖書館入館登記</title>
   <style>
     :root {
-      --bg1: #edf4ff;
-      --bg2: #f8fbff;
-      --card: rgba(255, 255, 255, 0.88);
-      --text: #1e293b;
-      --muted: #64748b;
-      --primary2: #1d4ed8;
-      --success: #16a34a;
-      --danger: #dc2626;
-      --warning: #f97316;
-      --shadow: 0 22px 60px rgba(37, 99, 235, 0.18);
-      --radius: 28px;
+      color-scheme: light;
+      --ground: #ebe8e1;
+      --surface: #fffefb;
+      --ink: #17242c;
+      --muted: #59676f;
+      --rule: #d5d2ca;
+      --accent: #1f5874;
+      --accent-dark: #153f55;
+      --accent-soft: #e5eef2;
+      --danger: #9f2f2f;
+      --focus: #245a78;
+      --radius: 6px;
+      --space-1: 8px;
+      --space-2: 12px;
+      --space-3: 16px;
+      --space-4: 24px;
+      --space-5: 32px;
     }
 
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
+    * { box-sizing: border-box; }
+
+    html, body { min-height: 100%; }
 
     body {
       margin: 0;
-      min-height: 100vh;
-      font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", Arial, sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(37, 99, 235, 0.18), transparent 34%),
-        radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.16), transparent 32%),
-        linear-gradient(135deg, var(--bg1), var(--bg2));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 22px;
+      overflow-x: hidden;
+      background: var(--ground);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .network-status {
-      position: fixed;
-      top: 18px;
-      right: 18px;
-      z-index: 30;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.9);
-      border: 1px solid rgba(148, 163, 184, 0.28);
-      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
-      backdrop-filter: blur(12px);
-      font-weight: 900;
-      color: #334155;
-      user-select: none;
+    button { font: inherit; }
+
+    button:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 3px;
     }
 
-    .network-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 999px;
-      background: #94a3b8;
-      box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.16);
-    }
-
-    .network-status.good .network-dot {
-      background: var(--success);
-      box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.16);
-    }
-
-    .network-status.slow .network-dot {
-      background: var(--warning);
-      box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.16);
-    }
-
-    .network-status.bad .network-dot {
-      background: var(--danger);
-      box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.16);
-    }
+    ::selection { background: #c9dbe5; color: var(--ink); }
 
     .app {
-      width: min(1160px, 100%);
-      background: var(--card);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(16px);
-      overflow: hidden;
-    }
-
-    .header {
-      padding: 32px 34px 18px;
-      text-align: center;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 14px;
-      border-radius: 999px;
-      background: rgba(37, 99, 235, 0.1);
-      color: var(--primary2);
-      font-size: 15px;
-      font-weight: 700;
-      margin-bottom: 14px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(34px, 6vw, 62px);
-      letter-spacing: 2px;
-      line-height: 1.08;
-    }
-
-    .subtitle {
-      margin: 14px 0 0;
-      font-size: clamp(16px, 2vw, 22px);
-      color: var(--muted);
-    }
-
-    .main {
-      padding: 20px 34px 38px;
-    }
-
-    .grade-layout {
+      width: min(100%, 1200px);
+      min-height: 100vh;
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: 0 clamp(24px, 5vw, 68px) max(20px, env(safe-area-inset-bottom));
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 30px;
-      align-items: stretch;
+      grid-template-rows: auto 1fr auto;
+      background: var(--surface);
     }
 
-    .grade-group {
-      background: rgba(255, 255, 255, 0.62);
-      border: 1px solid rgba(148, 163, 184, 0.22);
-      border-radius: 28px;
-      padding: 20px;
-      box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
-    }
-
-    .group-title {
-      margin: 0 0 16px;
-      text-align: center;
-      font-size: clamp(24px, 3vw, 36px);
-      font-weight: 900;
-      letter-spacing: 4px;
-      color: #0f172a;
-    }
-
-    .button-column {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 18px;
-    }
-
-    .grade-btn {
-      border: none;
-      min-height: 135px;
-      border-radius: 26px;
-      color: white;
-      cursor: pointer;
-      font-size: clamp(36px, 5vw, 58px);
-      font-weight: 900;
-      letter-spacing: 5px;
-      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease, opacity 0.12s ease;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .grade-btn:hover {
-      transform: translateY(-4px);
-      filter: brightness(1.05);
-    }
-
-    .grade-btn:active {
-      transform: scale(0.97);
-    }
-
-    .grade-btn:disabled {
-      cursor: not-allowed;
-      opacity: 0.72;
-      transform: none !important;
-      filter: grayscale(0.25) brightness(0.9);
-    }
-
-    .grade-btn.disabled {
-      filter: grayscale(0.35) brightness(0.85);
-    }
-
-    .junior .grade-btn:nth-child(1) {
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      box-shadow: 0 16px 34px rgba(37, 99, 235, 0.26);
-    }
-
-    .junior .grade-btn:nth-child(2) {
-      background: linear-gradient(135deg, #0891b2, #0e7490);
-      box-shadow: 0 16px 34px rgba(8, 145, 178, 0.25);
-    }
-
-    .junior .grade-btn:nth-child(3) {
-      background: linear-gradient(135deg, #7c3aed, #6d28d9);
-      box-shadow: 0 16px 34px rgba(124, 58, 237, 0.25);
-    }
-
-    .senior .grade-btn:nth-child(1) {
-      background: linear-gradient(135deg, #f97316, #ea580c);
-      box-shadow: 0 16px 34px rgba(249, 115, 22, 0.25);
-    }
-
-    .senior .grade-btn:nth-child(2) {
-      background: linear-gradient(135deg, #16a34a, #15803d);
-      box-shadow: 0 16px 34px rgba(22, 163, 74, 0.25);
-    }
-
-    .senior .grade-btn:nth-child(3) {
-      background: linear-gradient(135deg, #dc2626, #b91c1c);
-      box-shadow: 0 16px 34px rgba(220, 38, 38, 0.25);
-    }
-
-    .footer {
-      margin-top: 24px;
+    .topbar {
+      min-height: 88px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: var(--space-3);
+      margin-inline: clamp(-68px, -5vw, -24px);
+      padding: max(16px, env(safe-area-inset-top)) clamp(24px, 5vw, 68px) 16px;
+      border-bottom: 0;
+      background: var(--accent-dark);
+    }
+
+    .title {
+      margin: 0;
+      color: white;
+      font-size: clamp(23px, 3vw, 31px);
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .secondary-button,
+    .text-button,
+    .close-button {
+      min-height: 48px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .topbar .secondary-button {
+      border-color: rgba(255, 255, 255, 0.62);
+      background: transparent;
+      color: white;
+    }
+    .topbar .secondary-button:hover { background: rgba(255, 255, 255, 0.1); }
+    .secondary-button { padding: 0 18px; font-weight: 500; white-space: nowrap; }
+    .secondary-button:hover, .text-button:hover, .close-button:hover { background: #f1efea; }
+
+    main {
+      align-self: start;
+      width: 100%;
+      padding: clamp(32px, 5vh, 54px) 0 var(--space-5);
+    }
+
+    .instruction {
+      position: relative;
+      margin: 0 0 9px;
+      padding-left: 18px;
+      font-size: clamp(24px, 3.6vw, 38px);
+      line-height: 1.25;
+      font-weight: 650;
+      letter-spacing: -0.025em;
+    }
+
+    .instruction::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 5px;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+
+    .helper {
+      margin: 0 0 clamp(25px, 4vh, 38px) 18px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .class-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 14px;
+    }
+
+    .class-button,
+    .number-button,
+    .primary-button {
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--accent-dark);
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .class-button {
+      min-height: 68px;
+      padding: 10px;
+      font-size: clamp(18px, 2.1vw, 22px);
+      border-width: 0;
+      background: var(--accent);
+      color: white;
+      letter-spacing: 0.04em;
+    }
+
+    .class-button[data-grade="初一"] { background: #9d3434; }
+    .class-button[data-grade="初二"] { background: #a95016; }
+    .class-button[data-grade="初三"] { background: #d5a91b; color: #24200f; }
+    .class-button[data-grade="高一"] { background: #347153; }
+    .class-button[data-grade="高二"] { background: #28648a; }
+    .class-button[data-grade="高三"] { background: #684a80; }
+    .class-button:hover { filter: brightness(0.9); }
+    .class-button:active { filter: brightness(0.8); }
+    .number-button:hover { background: var(--accent-soft); }
+    .number-button:active { background: #d4e4eb; }
+
+    .statusbar {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-top: 1px solid var(--rule);
       color: var(--muted);
       font-size: 15px;
-      flex-wrap: wrap;
     }
 
-    .footer-text {
-      font-weight: 700;
+    .status-label {
+      padding: 5px 9px;
+      border-radius: 4px;
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      font-weight: 650;
     }
+    .statusbar[data-state="offline"], .statusbar[data-state="error"] { color: var(--danger); }
 
-    .queue-status {
-      display: none;
-    }
-
-    .fullscreen-btn {
-      border: none;
-      border-radius: 18px;
-      padding: 14px 22px;
-      cursor: pointer;
-      background: linear-gradient(135deg, #0f172a, #334155);
-      color: white;
-      font-weight: 900;
-      font-size: 18px;
-      letter-spacing: 1px;
-      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.22);
-      transition: transform 0.12s ease, filter 0.12s ease;
-    }
-
-    .fullscreen-btn:hover {
-      transform: translateY(-2px);
-      filter: brightness(1.08);
-    }
-
-    .fullscreen-btn:active {
-      transform: scale(0.97);
-    }
-
-    .toast-layer {
+    .dialog-layer {
       position: fixed;
       inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background: rgba(15, 23, 42, 0.32);
-      backdrop-filter: blur(6px);
-      z-index: 20;
-      padding: 20px;
-      pointer-events: auto;
-    }
-
-    .toast-layer.show {
-      display: flex;
-    }
-
-    .toast {
-      width: min(520px, 100%);
-      background: white;
-      border-radius: 30px;
-      padding: 42px 30px;
-      text-align: center;
-      box-shadow: 0 30px 80px rgba(15, 23, 42, 0.28);
-      animation: pop 0.18s ease-out;
-    }
-
-    @keyframes pop {
-      from { transform: scale(0.92); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
-    }
-
-    .toast-icon {
-      width: 96px;
-      height: 96px;
-      border-radius: 50%;
-      margin: 0 auto 18px;
-      color: white;
+      z-index: 10;
       display: grid;
       place-items: center;
-      font-size: 54px;
-      font-weight: 900;
+      padding: 24px;
+      background: rgba(28, 36, 43, 0.56);
     }
 
-    .toast-icon.success {
-      background: linear-gradient(135deg, #22c55e, #16a34a);
-      box-shadow: 0 14px 32px rgba(22, 163, 74, 0.28);
-      animation: successPop 0.24s ease-out;
+    .dialog-layer[hidden] { display: none; }
+
+    .dialog {
+      width: min(760px, 100%);
+      max-height: calc(100vh - 48px);
+      max-height: calc(100dvh - 48px);
+      overflow: auto;
+      border: 0;
+      border-radius: 8px;
+      background: var(--surface);
+      padding: clamp(24px, 4vw, 38px);
+      box-shadow: 0 8px 24px rgba(23, 36, 44, 0.16);
     }
 
-    .toast-icon.error {
-      background: linear-gradient(135deg, #ef4444, #dc2626);
-      box-shadow: 0 14px 32px rgba(220, 38, 38, 0.26);
-      animation: successPop 0.24s ease-out;
+    .dialog-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--rule);
     }
 
-    .toast-icon.loading {
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      box-shadow: 0 14px 32px rgba(37, 99, 235, 0.24);
-      font-size: 42px;
+    .dialog-title { margin: 0; color: var(--accent-dark); font-size: clamp(25px, 4vw, 35px); line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; }
+    .dialog-subtitle { margin: 6px 0 0; color: var(--muted); font-size: 17px; }
+
+    .close-button { width: 48px; flex: 0 0 48px; font-size: 25px; line-height: 1; }
+
+    .number-grid {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+      gap: 10px;
     }
 
-    @keyframes successPop {
-      0% { transform: scale(0.72); opacity: 0; }
-      70% { transform: scale(1.08); opacity: 1; }
-      100% { transform: scale(1); opacity: 1; }
+    .number-button { min-height: 54px; font-size: 18px; font-variant-numeric: tabular-nums; }
+
+    .receipt { text-align: left; }
+    .receipt-message { margin: 0 0 24px; font-size: 19px; }
+    .receipt-list { margin: 0; border-top: 1px solid var(--rule); }
+    .receipt-row { display: grid; grid-template-columns: 90px 1fr; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+    .receipt-row dt { color: var(--muted); }
+    .receipt-row dd { margin: 0; color: var(--accent-dark); font-weight: 650; font-variant-numeric: tabular-nums; }
+
+    .actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px; }
+    .text-button, .primary-button { min-height: 50px; padding: 0 20px; }
+    .primary-button { background: var(--accent); color: white; }
+    .primary-button:hover { background: var(--accent-dark); }
+    .primary-button:disabled { cursor: wait; opacity: 0.65; }
+
+    .countdown { margin: 18px 0 0; color: var(--muted); }
+    .error-text { color: var(--danger); }
+
+    @media (max-width: 900px) {
+      .app { padding-left: 28px; padding-right: 28px; }
+      .topbar { margin-inline: -28px; padding-inline: 28px; }
+      .class-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .number-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
     }
 
-    .check-svg {
-      width: 58px;
-      height: 58px;
-      display: block;
+    @media (max-width: 640px) {
+      .app { padding-left: 18px; padding-right: 18px; }
+      .topbar { margin-inline: -18px; padding-inline: 18px; }
+      .topbar { min-height: 76px; }
+      .class-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .number-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .dialog-layer { padding: 12px; }
+      .dialog { max-height: calc(100dvh - 24px); padding: 20px; }
     }
 
-    .check-svg path {
-      fill: none;
-      stroke: white;
-      stroke-width: 8;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      stroke-dasharray: 60;
-      stroke-dashoffset: 60;
-      animation: drawCheck 0.28s ease-out 0.12s forwards;
+    @media (max-height: 820px) and (min-width: 700px) {
+      main { padding-top: 26px; padding-bottom: 22px; }
+      .helper { margin-bottom: 20px; }
+      .class-button { min-height: 58px; }
+      .dialog { padding: 24px; }
+      .dialog-header { margin-bottom: 18px; padding-bottom: 14px; }
+      .number-button { min-height: 50px; }
     }
 
-    @keyframes drawCheck {
-      to { stroke-dashoffset: 0; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto; }
     }
-
-    .toast h2 {
-      margin: 0;
-      font-size: 42px;
+  </style>
+  <style>
+    :root { --navy:#0b2a66; --blue:#2160f3; --panel:rgba(255,255,255,.78); }
+    html,body { min-height:100%; }
+    body {
+      min-height:100vh; background:#eaf2ff;
+      color:var(--navy); overflow-x:hidden;
     }
-
-    .toast p {
-      margin: 12px 0 0;
-      color: var(--muted);
-      font-size: 20px;
-    }
-
-    .hidden-submit-frame {
-      display: none;
-    }
-
-    @media (max-width: 760px) {
-      body { padding: 12px; }
-      .network-status {
-        top: 10px;
-        right: 10px;
-        font-size: 13px;
-        padding: 8px 10px;
-      }
-      .header { padding: 48px 18px 14px; }
-      .main { padding: 16px 18px 26px; }
-      .grade-layout { gap: 14px; }
-      .grade-group { padding: 14px; border-radius: 22px; }
-      .button-column { gap: 12px; }
-      .grade-btn {
-        min-height: 112px;
-        border-radius: 20px;
-        letter-spacing: 3px;
-      }
-      .footer {
-        justify-content: center;
-        text-align: center;
-      }
-      .fullscreen-btn {
-        width: 100%;
-        max-width: 320px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .grade-layout {
-        grid-template-columns: 1fr;
-      }
-      .grade-btn {
-        min-height: 96px;
-      }
-    }
+    body::before,body::after { content:""; position:fixed; z-index:-1; pointer-events:none; }
+    body::before { width:52vw;height:22vw;right:-9vw;top:-12vw;border-radius:0 0 0 100%;background:rgba(255,255,255,.43);transform:rotate(10deg); }
+    body::after { width:48vw;height:26vw;left:-15vw;bottom:-16vw;background:#d9e8ff;transform:rotate(26deg); }
+    .app { width:min(1450px,100%);min-height:100vh;padding:38px 58px 24px;background:transparent;display:block; }
+    .topbar { min-height:128px;margin:0;padding:0;justify-content:center;background:transparent;gap:26px; }
+    .brand-icon { width:94px;height:82px;filter:drop-shadow(0 8px 10px rgba(39,92,207,.18)); }
+    .brand-copy { text-align:center; }
+    .title { color:#09255f;font-size:clamp(34px,4.1vw,57px);font-weight:800;letter-spacing:.06em;text-shadow:0 2px 0 white; }
+    .brand-subtitle { margin:10px 0 0;color:#456797;font-size:clamp(18px,2vw,28px);letter-spacing:.12em; }
+    #fullscreenButton { display:none; }
+    main { width:100%;padding:28px 0 20px;display:grid;grid-template-columns:minmax(0,2.08fr) minmax(360px,1fr);gap:20px; }
+    .selection-panel,.guide-panel { border-radius:30px;background:var(--panel);box-shadow:0 22px 60px rgba(32,42,58,.12);border:1px solid rgba(255,255,255,.95);backdrop-filter:blur(10px); }
+    .selection-panel { padding:30px 26px;overflow:hidden;isolation:isolate; }
+    .class-grid { display:flex;flex-direction:column;gap:17px;min-height:613px; }
+    .transition-old-layer { display:flex;flex-direction:column;gap:17px; }
+    .grade-row { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px; }
+    .class-button { min-height:88px;border-radius:16px;display:grid;place-items:center; }
+    .class-button { padding:8px;font-size:23px;background:#f4f7fc!important;color:inherit!important;border:1px solid transparent;box-shadow:none;transition:background-color 150ms ease,color 150ms ease,transform 150ms ease; }
+    .class-button:hover { filter:none;transform:translateY(-1px);box-shadow:none; }
+    .class-button:active { transform:scale(.97); }
+    .grade-row[data-grade="初一"] { color:#b71f4d; }.grade-row[data-grade="初一"] .class-button { background:#fdeaf1!important; }.grade-row[data-grade="初一"] .class-button:hover { background:#f9d5e2!important; }
+    .grade-row[data-grade="初二"] { color:#d94318; }.grade-row[data-grade="初二"] .class-button { background:#fff0e8!important; }.grade-row[data-grade="初二"] .class-button:hover { background:#ffdfcf!important; }
+    .grade-row[data-grade="初三"] { color:#a95800; }.grade-row[data-grade="初三"] .class-button { background:#fff4d9!important; }.grade-row[data-grade="初三"] .class-button:hover { background:#ffe9b5!important; }
+    .grade-row[data-grade="高一"] { color:#096a62; }.grade-row[data-grade="高一"] .class-button { background:#e7f6f2!important; }.grade-row[data-grade="高一"] .class-button:hover { background:#cfece5!important; }
+    .grade-row[data-grade="高二"] { color:#174fae; }.grade-row[data-grade="高二"] .class-button { background:#e8f0fc!important; }.grade-row[data-grade="高二"] .class-button:hover { background:#d4e3fa!important; }
+    .grade-row[data-grade="高三"] { color:#4e25a8; }.grade-row[data-grade="高三"] .class-button { background:#eee9fa!important; }.grade-row[data-grade="高三"] .class-button:hover { background:#ded3f5!important; }
+    .grade-row { border-radius:16px;background:transparent; }
+    .guide-panel { padding:36px 32px 28px;display:flex;flex-direction:column; }
+    .steps { display:flex;align-items:flex-start;justify-content:center;gap:22px; }
+    .step { text-align:center;color:#91a6c9;font-size:18px;font-weight:650;min-width:90px; }
+    .step-dot { width:54px;height:54px;margin:0 auto 10px;border-radius:50%;display:grid;place-items:center;color:white;background:#a8bad7;font-size:24px;box-shadow:inset 0 2px 6px rgba(255,255,255,.45); }
+    .step.active { color:#0755ef; }.step.active .step-dot { background:#2160f3;box-shadow:0 8px 18px rgba(32,42,58,.16); }
+    .step-line { width:78px;height:3px;margin-top:25px;background:#c6d4e9;border-radius:3px; }
+    .instructions { margin-top:22px;padding:20px 22px;border-radius:16px;background:#e6effd;color:#173666; }
+    .instructions h2 { margin:0 0 12px;font-size:21px;color:#0c2455;display:flex;align-items:center;gap:12px; }
+    .info-icon { width:35px;height:35px;border-radius:50%;display:grid;place-items:center;background:#2866ed;color:#fff;font:700 23px Georgia,serif; }
+    .instructions ol { margin:0;padding-left:24px;font-size:16px;line-height:1.72; }
+    .stats-panel { margin-top:24px;padding-top:22px;border-top:1px solid #d4e1f3; }
+    .today-summary { display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px; }
+    .today-label { color:#58749d;font-size:15px; }.today-count { color:#0b2a66;font-size:46px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.03em; }
+    .today-unit { margin-left:5px;color:#58749d;font-size:16px;font-weight:600; }
+    .ranking-title { margin:0;color:#163867;font-size:18px;font-weight:750; }
+    .ranking-list { margin:0;padding:0;list-style:none;border-top:1px solid #dbe5f3; }
+    .ranking-item { min-height:44px;display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:9px;border-bottom:1px solid #dbe5f3;color:#244970; }
+    .rank-number { width:27px;height:27px;border-radius:8px;display:grid;place-items:center;background:#e4edfb;color:#2e5c9c;font-size:13px;font-weight:800; }
+    .ranking-item:first-child .rank-number { background:#2160f3;color:#fff; }.rank-class{font-weight:750;font-size:16px}.rank-count{font-variant-numeric:tabular-nums;color:#5b769d;font-size:14px;}
+    .student-ranking { margin-top:22px; }.student-ranking .ranking-title{margin-bottom:6px}.stats-note { margin:12px 0 0;color:#7890b2;font-size:12px; }
+    .today-summary .ranking-title { color:#c2410c; }
+    #rankingList { padding:0 10px;border-radius:12px;background:#fff1e8;border-top-color:#f7c7ac; }
+    #rankingList .ranking-item { border-bottom-color:#f7c7ac; }
+    #rankingList .rank-number { background:#fed7c1;color:#9a3412; }
+    #rankingList .ranking-item:first-child .rank-number { background:#c2410c;color:#fff; }
+    #rankingList .rank-count { color:#9a3412; }
+    .student-ranking { padding:12px 10px 0;border-radius:12px;background:#f2ecff; }
+    .student-ranking .ranking-title { color:#5b21b6; }
+    #studentRankingList { border-top-color:#d7c8f5; }
+    #studentRankingList .ranking-item { border-bottom-color:#d7c8f5; }
+    #studentRankingList .rank-number { background:#ddd0f7;color:#5b21b6; }
+    #studentRankingList .ranking-item:first-child .rank-number { background:#5b21b6;color:#fff; }
+    #studentRankingList .rank-count { color:#5b21b6; }
+    .benefits { display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:36px; }
+    .benefit { min-height:118px;display:grid;place-items:center;text-align:center;border-radius:20px;background:rgba(237,244,255,.62);color:#31507d;font-size:16px; }
+    .benefit svg { width:38px;height:38px;stroke:#31507d;fill:none;stroke-width:1.8;margin-bottom:5px; }
+    .statusbar { min-height:42px;border:0;justify-content:center;color:#5d7ba8;font-size:17px;letter-spacing:.06em; }
+    .status-label { display:none; }
+    .statusbar::before,.statusbar::after { content:"";width:100px;height:1px;background:#b9cce8;margin:0 12px; }
+    .dialog { border-radius:24px;background:#f9fbff;box-shadow:0 28px 80px rgba(32,42,58,.2); }
+    .dialog-title { color:#0b2a66; }.number-button,.primary-button { border-color:#2762dd;color:#1647aa;border-radius:12px; }.primary-button { color:#fff;background:#215de6; }
+    .inline-number-view { min-height:594px;display:flex;flex-direction:column; }
+    .inline-number-header { display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 22px;padding:2px 4px 18px;border-bottom:1px solid #d9e5f5; }
+    .inline-number-title { margin:0;font-size:28px;color:#0b2a66; }.inline-number-title span{color:var(--class-color,#2160f3);}
+    .back-classes { min-height:46px;padding:0 18px;border:1px solid #8dacdb;border-radius:12px;background:#f5f9ff;color:#244b85;font-weight:650;cursor:pointer; }
+    .inline-number-view .number-grid { grid-template-columns:repeat(8,minmax(0,1fr));gap:13px; }
+    .inline-number-view .number-button { min-height:72px;background:var(--class-soft,#edf3fc);border-color:var(--class-border,#cad8ed);color:var(--class-color,#1647aa);font-size:21px;box-shadow:none;transition:background-color 150ms ease,color 150ms ease,transform 150ms ease; }
+    .inline-number-view .number-button:hover { background:var(--class-color,#2160f3);color:#fff; }.inline-number-view .number-button:active{transform:scale(.95);}
+    .inline-state { min-height:594px;display:grid;place-items:center;text-align:center;color:#173666; }
+    .inline-state-icon { width:74px;height:74px;margin:0 auto 18px;border-radius:50%;display:grid;place-items:center;background:#2160f3;color:#fff; }
+    .success-mark { width:42px;height:42px;fill:none;stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-linejoin:round; }
+    .success-mark circle { stroke-dasharray:126;stroke-dashoffset:126;animation:drawCircle 340ms cubic-bezier(.16,1,.3,1) forwards; }
+    .success-mark path { stroke-dasharray:36;stroke-dashoffset:36;animation:drawCheck 260ms 210ms cubic-bezier(.16,1,.3,1) forwards; }
+    .inline-state.is-success .inline-state-icon { animation:successSettle 420ms cubic-bezier(.16,1,.3,1) both; }
+    @keyframes drawCircle { to { stroke-dashoffset:0; } }
+    @keyframes drawCheck { to { stroke-dashoffset:0; } }
+    @keyframes successSettle { 0%{transform:scale(.72);opacity:0} 70%{transform:scale(1.06);opacity:1} 100%{transform:scale(1)} }
+    .inline-state h2 { margin:0 0 10px;font-size:34px;color:#0b2a66; }.inline-state p{margin:0;color:#55739f;font-size:20px;}
+    .zoom-controls { position:fixed;right:20px;bottom:18px;z-index:20;display:flex;align-items:center;gap:6px;padding:7px;border-radius:14px;background:rgba(255,255,255,.92);box-shadow:0 10px 28px rgba(32,42,58,.16);border:1px solid #d7e3f4; }
+    .zoom-controls button { width:44px;height:44px;border:0;border-radius:10px;background:#edf4ff;color:#174aa8;font-size:28px;font-weight:700;cursor:pointer;line-height:1; }
+    .zoom-controls button:hover { background:#dce9ff; }.zoom-value{min-width:48px;text-align:center;color:#365782;font-size:14px;font-variant-numeric:tabular-nums;}
+    @media (max-width:1050px) { .app{padding:28px}.topbar{min-height:112px}main{grid-template-columns:1fr}.guide-panel{padding:28px}.benefits{display:none}.instructions{margin-top:22px} }
+    @media (max-width:680px) { .app{padding:18px 12px}.brand-icon{width:62px;height:58px}.title{font-size:29px}.brand-subtitle{font-size:16px}.topbar{gap:12px;min-height:92px}main{padding-top:14px}.selection-panel{padding:15px 12px;border-radius:22px}.class-grid{min-height:0}.class-grid,.transition-old-layer{gap:10px}.grade-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.class-button{min-height:64px;border-radius:12px;font-size:18px}.guide-panel{border-radius:22px}.number-grid,.inline-number-view .number-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.inline-number-view .number-button{min-height:58px}.inline-number-view,.inline-state{min-height:0}.zoom-controls{right:10px;bottom:10px} }
+    @media (prefers-reduced-motion:reduce) { .success-mark circle,.success-mark path,.inline-state.is-success .inline-state-icon{animation-duration:1ms;animation-delay:0ms} }
   </style>
 </head>
 <body>
-  <div class="network-status" id="networkStatus">
-    <span class="network-dot"></span>
-    <span id="networkText">檢測網絡中...</span>
+  <div class="app">
+    <header class="topbar">
+      <svg class="brand-icon" viewBox="0 0 100 88" aria-hidden="true"><path fill="#3974ef" d="M5 10Q25 3 46 15v61Q26 65 5 74zM95 10Q75 3 54 15v61q20-11 41-2z"/><path d="M10 68q22-8 40 5 18-13 40-5" fill="none" stroke="#ddecff" stroke-width="4" stroke-linecap="round"/></svg>
+      <div class="brand-copy"><h1 class="title">圖書館入館登記</h1><p class="brand-subtitle">請選擇你所在的班級</p></div>
+      <button class="secondary-button" id="fullscreenButton" type="button">進入全螢幕</button>
+    </header>
+
+    <main>
+      <section class="selection-panel" aria-label="班級選擇"><div class="class-grid" id="classGrid"></div></section>
+      <aside class="guide-panel">
+        <div>
+          <div class="steps"><div class="step active" id="classStep"><span class="step-dot">1</span>選擇班級</div><span class="step-line"></span><div class="step" id="numberStep"><span class="step-dot">2</span>選擇學號</div></div>
+          <section class="stats-panel" aria-label="今日進館統計">
+            <div class="today-summary"><div><div class="today-label">本月進館人數</div><div><span class="today-count" id="todayCount">—</span><span class="today-unit">人</span></div></div><h2 class="ranking-title">本月班級前三名</h2></div>
+            <ol class="ranking-list" id="rankingList"><li class="ranking-item"><span class="rank-number">1</span><span class="rank-class">讀取中</span><span class="rank-count">—</span></li><li class="ranking-item"><span class="rank-number">2</span><span class="rank-class">—</span><span class="rank-count">—</span></li><li class="ranking-item"><span class="rank-number">3</span><span class="rank-class">—</span><span class="rank-count">—</span></li></ol>
+            <section class="student-ranking"><h2 class="ranking-title">本月個人前三名</h2><ol class="ranking-list" id="studentRankingList"><li class="ranking-item"><span class="rank-number">1</span><span class="rank-class">讀取中</span><span class="rank-count">—</span></li><li class="ranking-item"><span class="rank-number">2</span><span class="rank-class">—</span><span class="rank-count">—</span></li><li class="ranking-item"><span class="rank-number">3</span><span class="rank-class">—</span><span class="rank-count">—</span></li></ol></section>
+            <p class="stats-note" id="statsNote">正在同步 Google 表格…</p>
+          </section>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="statusbar" id="systemStatus" data-state="online" role="status" aria-live="polite">
+      <span class="status-label">系統狀態</span>
+      <span id="networkText">感謝你的配合 · 請自覺遵守圖書館規則</span>
+    </footer>
   </div>
 
-  <main class="app">
-    <section class="header">
-      <div class="badge">📚 圖書館入館記錄</div>
-      <h1>圖書館進館統計</h1>
-      <p class="subtitle">左邊初中，右邊高中；點一下即自動提交</p>
-    </section>
+  <div class="zoom-controls" aria-label="畫面縮放">
+    <button id="zoomOut" type="button" aria-label="縮小畫面">−</button><span class="zoom-value" id="zoomValue">100%</span><button id="zoomIn" type="button" aria-label="放大畫面">＋</button>
+  </div>
 
-    <section class="main">
-      <div class="grade-layout">
-        <div class="grade-group junior">
-          <h2 class="group-title">初中</h2>
-          <div class="button-column">
-            <button class="grade-btn" type="button" onclick="submitGrade('初一')">初一</button>
-            <button class="grade-btn" type="button" onclick="submitGrade('初二')">初二</button>
-            <button class="grade-btn" type="button" onclick="submitGrade('初三')">初三</button>
-          </div>
+  <div class="dialog-layer" id="dialogLayer" hidden>
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" aria-describedby="dialogSubtitle">
+      <div class="dialog-header">
+        <div>
+          <h2 class="dialog-title" id="dialogTitle">選擇學號</h2>
+          <p class="dialog-subtitle" id="dialogSubtitle"></p>
         </div>
-
-        <div class="grade-group senior">
-          <h2 class="group-title">高中</h2>
-          <div class="button-column">
-            <button class="grade-btn" type="button" onclick="submitGrade('高一')">高一</button>
-            <button class="grade-btn" type="button" onclick="submitGrade('高二')">高二</button>
-            <button class="grade-btn" type="button" onclick="submitGrade('高三')">高三</button>
-          </div>
-        </div>
+        <button class="close-button" id="closeDialog" type="button" aria-label="關閉學號選擇">×</button>
       </div>
-
-      <div class="footer">
-        <div class="footer-text">點選年級後會自動提交，成功提示顯示 0.5 秒後返回主畫面。</div>
-        <button class="fullscreen-btn" id="fullscreenBtn" type="button" onclick="toggleFullscreen()">點我全屏</button>
-      </div>
+      <div id="dialogContent"></div>
     </section>
-  </main>
-
-  <div class="toast-layer" id="toastLayer">
-    <div class="toast">
-      <div class="toast-icon success" id="toastIcon"></div>
-      <h2 id="toastTitle">提交成功</h2>
-      <p id="toastMessage"><span id="submittedGrade">年級</span> 已記錄，正在返回主頁面...</p>
-    </div>
   </div>
 
   <script>
-    const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLScPUl_1_o3XPVEPljqI9fhOFXknc3nK9puWNWGzosvfVPs84g/formResponse";
-    const ENTRY_NAME = "entry.842011085";
+    (() => {
+      "use strict";
 
-    // 每隔 2 秒測一次；超過 3 秒就當作超時
-    const PING_INTERVAL = 2000;
-    const PING_TIMEOUT = 3000;
+      const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLScPUl_1_o3XPVEPljqI9fhOFXknc3nK9puWNWGzosvfVPs84g/formResponse";
+      const CLASS_ENTRY_NAME = "entry.842011085";
+      const STUDENT_ENTRY_NAME = "entry.985173266";
+      const QUEUE_KEY = "library-entry-submit-queue-v1";
+      const SHEET_QUERY_URL = "https://docs.google.com/spreadsheets/d/1QffyxRAl7kxuoRi8083D5FLO-DrFbVKs8zdomlLyY20/gviz/tq";
+      const CLASSES = [
+        "初一甲", "初一乙", "初一丙", "初一丁",
+        "初二甲", "初二乙", "初二丙", "初二丁",
+        "初三甲", "初三乙", "初三丙", "初三丁",
+        "高一甲", "高一乙", "高一丙",
+        "高二甲", "高二乙", "高二丙",
+        "高三甲", "高三乙"
+      ];
+      const CLASS_THEMES = {
+        "初一甲": ["#a91f50","#fdeaf1","#efbfd0"], "初一乙": ["#bd304e","#fcebee","#efc1ca"],
+        "初一丙": ["#c94728","#fff0ea","#f1c5b8"], "初一丁": ["#a95816","#fff1e6","#ebc9ad"],
+        "初二甲": ["#9a6500","#fff4d8","#ead39b"], "初二乙": ["#777000","#f8f5d9","#d9d39c"],
+        "初二丙": ["#4c751e","#eff6df","#c9dba7"], "初二丁": ["#187044","#e7f5eb","#b7dac7"],
+        "初三甲": ["#087168","#e5f6f3","#b4dcd6"], "初三乙": ["#006b83","#e4f3f7","#afd4de"],
+        "初三丙": ["#185ba5","#e9f1fb","#b9cfeb"], "初三丁": ["#3e51ab","#eceffc","#c1c8eb"],
+        "高一甲": ["#6040a9","#f0ecfb","#ccc1e9"], "高一乙": ["#773991","#f5ebf8","#d9bfe1"],
+        "高一丙": ["#963170","#faeaf3","#e6bdd3"], "高二甲": ["#a33a58","#fbecef","#e7c2cc"],
+        "高二乙": ["#8d4b22","#f9efe8","#dfc8b8"], "高二丙": ["#696132","#f4f2e7","#d7d2b8"],
+        "高三甲": ["#356b50","#eaf4ee","#bdd6c7"], "高三乙": ["#3b6288","#eaf0f6","#bdcedd"]
+      };
 
-    // 勾勾顯示 0.5 秒；這 0.5 秒內不能按任何年級
-    const SUCCESS_SHOW_TIME = 500;
+      const classGrid = document.getElementById("classGrid");
+      const dialogLayer = document.getElementById("dialogLayer");
+      const dialogTitle = document.getElementById("dialogTitle");
+      const dialogSubtitle = document.getElementById("dialogSubtitle");
+      const dialogContent = document.getElementById("dialogContent");
+      const closeDialogButton = document.getElementById("closeDialog");
+      const fullscreenButton = document.getElementById("fullscreenButton");
+      const systemStatus = document.getElementById("systemStatus");
+      const networkText = document.getElementById("networkText");
+      const classStep = document.getElementById("classStep");
+      const numberStep = document.getElementById("numberStep");
+      const zoomValue = document.getElementById("zoomValue");
+      const todayCount = document.getElementById("todayCount");
+      const rankingList = document.getElementById("rankingList");
+      const studentRankingList = document.getElementById("studentRankingList");
+      const statsNote = document.getElementById("statsNote");
 
-    // 後台提交超過 8 秒未返回，就重試
-    const SUBMIT_TIMEOUT = 8000;
-    const MAX_RETRY = 3;
+      let selectedClass = "";
+      let selectedNumber = null;
+      let previousFocus = null;
+      let confirmationTimer = null;
+      let confirmationSeconds = 3;
+      let isSubmitting = false;
+      let resetTimer = null;
+      let interfaceZoom = Number(localStorage.getItem("library-interface-zoom") || 100);
+      let statsRequestInFlight = false;
 
-    const toastLayer = document.getElementById("toastLayer");
-    const toastIcon = document.getElementById("toastIcon");
-    const toastTitle = document.getElementById("toastTitle");
-    const toastMessage = document.getElementById("toastMessage");
-    const fullscreenBtn = document.getElementById("fullscreenBtn");
-    const networkStatus = document.getElementById("networkStatus");
-    const networkText = document.getElementById("networkText");
-
-    let busy = false;
-    let networkOK = false;
-    let toastTimer = null;
-
-    // 提交隊列：用來避免短時間多次點擊時漏記。
-    let submitQueue = [];
-    let isProcessingQueue = false;
-    let sentCount = 0;
-    let failedCount = 0;
-
-    function setAllGradeButtonsDisabled(disabled) {
-      document.querySelectorAll(".grade-btn").forEach((btn) => {
-        btn.disabled = disabled;
-      });
-    }
-
-    function setBusy(value) {
-      busy = value;
-      setAllGradeButtonsDisabled(value);
-    }
-
-    function showToast(type, title, message, ms = 500, afterHide = null) {
-      clearTimeout(toastTimer);
-
-      toastIcon.className = "toast-icon " + type;
-
-      if (type === "success") {
-        toastIcon.innerHTML = `
-          <svg class="check-svg" viewBox="0 0 64 64" aria-hidden="true">
-            <path d="M18 33.5 L27.5 43 L47 21"></path>
-          </svg>
-        `;
-      } else if (type === "error") {
-        toastIcon.textContent = "!";
-      } else {
-        toastIcon.textContent = "…";
-      }
-
-      toastTitle.textContent = title;
-      toastMessage.innerHTML = message;
-      toastLayer.classList.add("show");
-
-      if (ms > 0) {
-        toastTimer = setTimeout(() => {
-          toastLayer.classList.remove("show");
-          if (typeof afterHide === "function") afterHide();
-        }, ms);
-      }
-    }
-
-    function updateQueueStatus() {
-      // 不在前台顯示隊列文字，避免老師或使用者看到技術提示。
-    }
-
-    function setNetworkStatus(status, text) {
-      networkStatus.className = "network-status " + status;
-      networkText.textContent = text;
-
-      document.querySelectorAll(".grade-btn").forEach((btn) => {
-        if (status === "bad") {
-          btn.classList.add("disabled");
-        } else {
-          btn.classList.remove("disabled");
-        }
-      });
-    }
-
-    function getPingUrl() {
-      if (location.protocol === "http:" || location.protocol === "https:") {
-        const base = location.origin + location.pathname;
-        return base + "?ping=" + Date.now();
-      }
-
-      return "https://github.githubassets.com/favicons/favicon.png?ping=" + Date.now();
-    }
-
-    function checkNetwork() {
-      const start = performance.now();
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), PING_TIMEOUT);
-
-      fetch(getPingUrl(), {
-        method: "GET",
-        cache: "no-store",
-        mode: location.protocol === "file:" ? "no-cors" : "same-origin",
-        signal: controller.signal
-      })
-      .then(() => {
-        clearTimeout(timer);
-        const pingMs = Math.round(performance.now() - start);
-        networkOK = true;
-
-        if (pingMs <= 800) {
-          setNetworkStatus("good", "網絡良好 " + pingMs + "ms");
-        } else {
-          setNetworkStatus("slow", "網絡較慢 " + pingMs + "ms");
-        }
-      })
-      .catch(() => {
-        clearTimeout(timer);
-        networkOK = false;
-        setNetworkStatus("bad", "連接失敗 / 超時");
-      });
-    }
-
-    function submitGrade(grade) {
-      // 勾勾顯示的 0.5 秒內不能再點
-      if (busy) return;
-
-      if (!networkOK) {
-        showToast("error", "提交失敗", "網絡錯誤，請檢查連接後再試。", 1200);
-        return;
-      }
-
-      // 立即顯示成功，0.5 秒內鎖住按鈕。
-      setBusy(true);
-      showToast("success", "提交成功", "<span>" + grade + "</span> 已成功記錄。", SUCCESS_SHOW_TIME, () => {
-        setBusy(false);
-      });
-
-      // 加入提交隊列，一條一條送到 Google 表單。
-      submitQueue.push({
-        grade: grade,
-        attempts: 0,
-        id: Date.now() + "_" + Math.random().toString(16).slice(2)
-      });
-
-      updateQueueStatus();
-      processQueue();
-    }
-
-    function processQueue() {
-      if (isProcessingQueue) return;
-      if (submitQueue.length === 0) {
-        updateQueueStatus();
-        return;
-      }
-
-      isProcessingQueue = true;
-      updateQueueStatus();
-
-      const item = submitQueue.shift();
-      sendOneQueuedItem(item)
-        .then(() => {
-          sentCount++;
-          isProcessingQueue = false;
-          updateQueueStatus();
-          processQueue();
-        })
-        .catch(() => {
-          item.attempts++;
-
-          if (item.attempts < MAX_RETRY) {
-            // 失敗就放回隊列前面重試，避免漏記
-            submitQueue.unshift(item);
-          } else {
-            failedCount++;
-            showToast("error", "提交異常", "網絡不穩定，請稍後再試或檢查 Google 表單。", 1800);
-          }
-
-          isProcessingQueue = false;
-          updateQueueStatus();
-
-          // 稍微等一下再繼續，避免網絡壞時瘋狂重試
-          setTimeout(processQueue, 1000);
+      function createClassView() {
+        const view = document.createElement("div");
+        view.className = "transition-old-layer";
+        ["初一","初二","初三","高一","高二","高三"].forEach((grade) => {
+          const row = document.createElement("div");
+          row.className = "grade-row";
+          row.dataset.grade = grade;
+          CLASSES.filter((name) => name.startsWith(grade)).forEach((className) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "class-button";
+            button.textContent = className;
+            button.addEventListener("click", () => openNumberDialog(className, button));
+            row.appendChild(button);
+          });
+          view.appendChild(row);
         });
-    }
-
-    function sendOneQueuedItem(item) {
-      return new Promise((resolve, reject) => {
-        const submitId = "submitFrame_" + item.id + "_" + item.attempts;
-
-        const iframe = document.createElement("iframe");
-        iframe.name = submitId;
-        iframe.className = "hidden-submit-frame";
-        iframe.title = "hidden submit frame";
-
-        let hasSubmitted = false;
-        let finished = false;
-
-        function cleanup() {
-          setTimeout(() => iframe.remove(), 3000);
-        }
-
-        const timeout = setTimeout(() => {
-          if (finished) return;
-          finished = true;
-          cleanup();
-          reject(new Error("timeout"));
-        }, SUBMIT_TIMEOUT);
-
-        iframe.onload = () => {
-          if (!hasSubmitted || finished) return;
-
-          finished = true;
-          clearTimeout(timeout);
-          cleanup();
-          resolve();
-        };
-
-        document.body.appendChild(iframe);
-
-        const form = document.createElement("form");
-        form.action = FORM_ACTION;
-        form.method = "POST";
-        form.target = submitId;
-        form.style.display = "none";
-
-        const input = document.createElement("input");
-        input.name = ENTRY_NAME;
-        input.value = item.grade;
-        form.appendChild(input);
-
-        document.body.appendChild(form);
-
-        hasSubmitted = true;
-        form.submit();
-
-        // 不要立刻刪除 form，避免瀏覽器還沒送完
-        setTimeout(() => form.remove(), 3000);
-      });
-    }
-
-    function getFullscreenElement() {
-      return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
-    }
-
-    function toggleFullscreen() {
-      if (!getFullscreenElement()) {
-        const page = document.documentElement;
-
-        if (page.requestFullscreen) {
-          page.requestFullscreen();
-        } else if (page.webkitRequestFullscreen) {
-          page.webkitRequestFullscreen();
-        } else if (page.msRequestFullscreen) {
-          page.msRequestFullscreen();
-        }
-
-        fullscreenBtn.textContent = "退出全屏";
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        } else if (document.webkitExitFullscreen) {
-          document.webkitExitFullscreen();
-        } else if (document.msExitFullscreen) {
-          document.msExitFullscreen();
-        }
-
-        fullscreenBtn.textContent = "點我全屏";
+        return view;
       }
-    }
 
-    document.addEventListener("fullscreenchange", () => {
-      fullscreenBtn.textContent = getFullscreenElement() ? "退出全屏" : "點我全屏";
-    });
+      function renderClasses() {
+        classStep.classList.add("active");
+        numberStep.classList.remove("active");
+        classGrid.replaceChildren(createClassView());
+      }
 
-    document.addEventListener("webkitfullscreenchange", () => {
-      fullscreenBtn.textContent = getFullscreenElement() ? "退出全屏" : "點我全屏";
-    });
+      async function slideContentTogether(nextView, direction = "forward") {
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reducedMotion) {
+          classGrid.replaceChildren(nextView);
+          return;
+        }
+        const currentHeight = classGrid.getBoundingClientRect().height;
+        const oldLayer = document.createElement("div");
+        const nextLayer = document.createElement("div");
+        oldLayer.className = "transition-old-layer";
+        oldLayer.style.cssText = "position:absolute;inset:0;width:100%;";
+        const enteringFrom = direction === "back" ? "calc(-100% - 42px)" : "calc(100% + 42px)";
+        const exitingTo = direction === "back" ? "calc(100% + 42px)" : "calc(-100% - 42px)";
+        nextLayer.style.cssText = `position:absolute;inset:0;width:100%;transform:translateX(${enteringFrom});`;
+        oldLayer.append(...Array.from(classGrid.childNodes));
+        nextLayer.appendChild(nextView);
+        classGrid.replaceChildren(oldLayer, nextLayer);
+        classGrid.style.position = "relative";
+        classGrid.style.height = `${Math.max(currentHeight, nextLayer.scrollHeight)}px`;
+        classGrid.style.pointerEvents = "none";
+        const exit = oldLayer.animate(
+          [{ transform:"translateX(0)" }, { transform:`translateX(${exitingTo})` }],
+          { duration:360, easing:"cubic-bezier(.7,0,.3,1)", fill:"forwards" }
+        );
+        const enter = nextLayer.animate(
+          [{ transform:`translateX(${enteringFrom})` }, { transform:"translateX(0)" }],
+          { duration:360, easing:"cubic-bezier(.7,0,.3,1)", fill:"forwards" }
+        );
+        await Promise.all([exit.finished, enter.finished]).catch(() => {});
+        classGrid.replaceChildren(nextView);
+        classGrid.style.position = "";
+        classGrid.style.height = "";
+        classGrid.style.pointerEvents = "";
+      }
 
-    window.addEventListener("online", checkNetwork);
-    window.addEventListener("offline", () => {
-      networkOK = false;
-      setNetworkStatus("bad", "連接失敗 / 超時");
-    });
+      async function openNumberDialog(className, trigger) {
+        clearTimers();
+        selectedClass = className;
+        selectedNumber = null;
+        previousFocus = trigger;
+        classStep.classList.remove("active");
+        numberStep.classList.add("active");
 
-    checkNetwork();
-    setInterval(checkNetwork, PING_INTERVAL);
+        const grid = document.createElement("div");
+        grid.className = "number-grid";
+        grid.setAttribute("aria-label", `${className}學號選擇`);
+        for (let number = 1; number <= 40; number += 1) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "number-button";
+          button.textContent = number;
+          button.setAttribute("aria-label", `${number}號`);
+          button.addEventListener("click", () => showConfirmation(number));
+          grid.appendChild(button);
+        }
+        const view = document.createElement("div");
+        view.className = "inline-number-view";
+        const theme = CLASS_THEMES[className] || ["#2160f3","#edf3fc","#cad8ed"];
+        view.style.setProperty("--class-color", theme[0]);
+        view.style.setProperty("--class-soft", theme[1]);
+        view.style.setProperty("--class-border", theme[2]);
+        view.innerHTML = `<div class="inline-number-header"><h2 class="inline-number-title">選擇 <span>${escapeHtml(className)}</span> 學號</h2><button class="back-classes" type="button">返回班級</button></div>`;
+        view.querySelector(".back-classes").addEventListener("click", returnToClassesAnimated);
+        view.appendChild(grid);
+        await slideContentTogether(view);
+        requestAnimationFrame(() => grid.querySelector("button")?.focus());
+      }
+
+      async function returnToClassesAnimated() {
+        clearTimers();
+        classStep.classList.add("active");
+        numberStep.classList.remove("active");
+        selectedClass = "";
+        selectedNumber = null;
+        await slideContentTogether(createClassView(), "back");
+        classGrid.querySelector("button")?.focus();
+        updateNetworkStatus();
+      }
+
+      function showConfirmation(number) {
+        clearTimers();
+        selectedNumber = number;
+        submitSelection();
+      }
+
+      function submitSelection() {
+        if (isSubmitting || !selectedClass || selectedNumber === null) return;
+        clearConfirmationTimer();
+        isSubmitting = true;
+        const record = { className: selectedClass, number: selectedNumber, createdAt: Date.now() };
+        showSuccess(record);
+        isSubmitting = false;
+        postRecord(record)
+          .then(() => {
+            flushQueue();
+            window.setTimeout(loadStats, 3500);
+            window.setTimeout(loadStats, 10000);
+          })
+          .catch(() => {
+            enqueue(record);
+            setStatus(navigator.onLine ? "online" : "offline", navigator.onLine ? "登記已接收，背景同步中" : "暫時離線，記錄將在恢復連線後提交");
+          });
+      }
+
+      function postRecord(record) {
+        return new Promise((resolve, reject) => {
+          if (!navigator.onLine) {
+            reject(new Error("offline"));
+            return;
+          }
+          const frameName = `google-form-target-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const iframe = document.createElement("iframe");
+          iframe.name = frameName;
+          iframe.title = "Google Forms submission target";
+          iframe.hidden = true;
+          const form = document.createElement("form");
+          form.action = FORM_ACTION;
+          form.method = "POST";
+          form.target = frameName;
+          form.hidden = true;
+
+          [[CLASS_ENTRY_NAME, record.className], [STUDENT_ENTRY_NAME, String(record.number)]].forEach(([name, value]) => {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
+          });
+
+          let timeoutId;
+          let settled = false;
+          const cleanup = () => {
+            window.clearTimeout(timeoutId);
+            window.setTimeout(() => { iframe.remove(); form.remove(); }, 1000);
+          };
+          iframe.addEventListener("load", () => {
+            iframe.addEventListener("load", () => {
+              if (settled) return;
+              settled = true;
+              cleanup();
+              resolve();
+            }, { once: true });
+            document.body.appendChild(form);
+            timeoutId = window.setTimeout(() => {
+              if (settled) return;
+              settled = true;
+              cleanup();
+              reject(new Error("submission-unconfirmed"));
+            }, 8000);
+            try {
+              form.submit();
+            } catch (error) {
+              settled = true;
+              cleanup();
+              reject(error);
+            }
+          }, { once: true });
+          iframe.src = "about:blank";
+          document.body.appendChild(iframe);
+        });
+      }
+
+      function showSuccess(record) {
+        classGrid.innerHTML = `<div class="inline-state is-success" role="status" aria-live="polite"><div><div class="inline-state-icon"><svg class="success-mark" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20"/><path d="M14 24.5l6.5 6.5L35 16.5"/></svg></div><h2>提交成功</h2><p>${escapeHtml(record.className)} · ${record.number} 號</p></div></div>`;
+        setStatus("online", "登記已送出，系統在線");
+        resetTimer = window.setTimeout(resetToClasses, 800);
+      }
+
+      function showQueued(record) {
+        classGrid.innerHTML = `<div class="inline-state" role="status" aria-live="polite"><div><div class="inline-state-icon">✓</div><h2>已暫存登記</h2><p>網路恢復後將自動提交</p></div></div>`;
+        setStatus("offline", "暫時離線，記錄將在恢復連線後提交");
+        resetTimer = window.setTimeout(resetToClasses, 800);
+      }
+
+      function showError(message = "登記未送出，已保留目前選擇。") {
+        classGrid.innerHTML = `<div class="inline-state"><div><div class="inline-state-icon" style="background:#b43a3a">!</div><h2>提交失敗</h2><p class="error-text">${escapeHtml(message)}</p><div class="actions"><button class="text-button" id="editSelection" type="button">返回學號</button><button class="primary-button" id="retrySubmit" type="button">重試提交</button></div></div></div>`;
+        document.getElementById("editSelection")?.addEventListener("click", () => openNumberDialog(selectedClass, previousFocus));
+        document.getElementById("retrySubmit")?.addEventListener("click", submitSelection);
+        setStatus("error", "提交失敗，請重試或聯絡老師");
+        document.getElementById("retrySubmit")?.focus();
+      }
+
+      function receiptMarkup(record, time, note, isError) {
+        return `<div class="receipt">
+          <p class="receipt-message${isError ? " error-text" : ""}">${note}</p>
+          <dl class="receipt-list">
+            <div class="receipt-row"><dt>班級</dt><dd>${escapeHtml(record.className)}</dd></div>
+            <div class="receipt-row"><dt>學號</dt><dd>${record.number} 號</dd></div>
+            <div class="receipt-row"><dt>時間</dt><dd>${time}</dd></div>
+          </dl>
+        </div>`;
+      }
+
+      function enqueue(record) {
+        try {
+          const queue = readQueue();
+          queue.push(record);
+          localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+          return readQueue().some((item) => item.createdAt === record.createdAt);
+        } catch (error) {
+          return false;
+        }
+      }
+
+      function readQueue() {
+        try {
+          const value = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+          return Array.isArray(value) ? value : [];
+        } catch (error) {
+          return [];
+        }
+      }
+
+      async function flushQueue() {
+        if (!navigator.onLine) return;
+        const queue = readQueue();
+        if (!queue.length) return;
+        const remaining = [];
+        for (const record of queue) {
+          try { await postRecord(record); } catch (error) { remaining.push(record); }
+        }
+        try {
+          localStorage.setItem(QUEUE_KEY, JSON.stringify(remaining));
+        } catch (error) {
+          setStatus("error", "離線記錄無法更新，請聯絡老師");
+        }
+      }
+
+      function updateNetworkStatus() {
+        if (navigator.onLine) {
+          setStatus("online", "感謝你的配合 · 請自覺遵守圖書館規則");
+          flushQueue();
+        } else {
+          setStatus("offline", "暫時離線，記錄將在恢復連線後提交");
+        }
+      }
+
+      function setStatus(state, message) {
+        systemStatus.dataset.state = state;
+        networkText.textContent = message;
+      }
+
+      function closeDialog() {
+        if (isSubmitting) return;
+        clearTimers();
+        dialogLayer.hidden = true;
+        document.body.style.overflow = "";
+        previousFocus?.focus();
+      }
+
+      function resetToClasses() {
+        clearTimers();
+        dialogLayer.hidden = true;
+        document.body.style.overflow = "";
+        selectedClass = "";
+        selectedNumber = null;
+        renderClasses();
+        classGrid.querySelector("button")?.focus();
+        updateNetworkStatus();
+      }
+
+      function applyInterfaceZoom() {
+        interfaceZoom = Math.min(130, Math.max(70, interfaceZoom));
+        document.querySelector(".app").style.zoom = `${interfaceZoom}%`;
+        zoomValue.textContent = `${interfaceZoom}%`;
+        localStorage.setItem("library-interface-zoom", String(interfaceZoom));
+      }
+
+      function parseCsv(text) {
+        const rows = [];
+        let row = [], field = "", quoted = false;
+        for (let index = 0; index < text.length; index += 1) {
+          const character = text[index];
+          if (quoted) {
+            if (character === '"' && text[index + 1] === '"') { field += '"'; index += 1; }
+            else if (character === '"') quoted = false;
+            else field += character;
+          } else if (character === '"') quoted = true;
+          else if (character === ',') { row.push(field); field = ""; }
+          else if (character === '\n') { row.push(field.replace(/\r$/, "")); rows.push(row); row = []; field = ""; }
+          else field += character;
+        }
+        if (field || row.length) { row.push(field.replace(/\r$/, "")); rows.push(row); }
+        return rows;
+      }
+
+      function timestampDay(value) {
+        const match = String(value || "").trim().match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+        return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
+      }
+
+      function renderStats(rows) {
+        const now = new Date();
+        const currentMonth = [now.getFullYear(), now.getMonth() + 1];
+        const monthRows = rows.slice(1).filter((row) => {
+          const day = timestampDay(row[0]);
+          return day && day.slice(0, 2).every((value, index) => value === currentMonth[index]);
+        });
+        const classCounts = new Map();
+        const studentCounts = new Map();
+        monthRows.forEach((row) => {
+          const className = String(row[1] || "").trim();
+          const studentNumber = String(row[2] || "").trim();
+          if (!CLASSES.includes(className)) return;
+          classCounts.set(className, (classCounts.get(className) || 0) + 1);
+          if (/^([1-9]|[1-3]\d|40)$/.test(studentNumber)) {
+            const key = `${className}\u0000${studentNumber}`;
+            studentCounts.set(key, (studentCounts.get(key) || 0) + 1);
+          }
+        });
+        const sortRanking = (map) => [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-Hant")).slice(0, 3);
+        const classRanking = sortRanking(classCounts);
+        const studentRanking = sortRanking(studentCounts).map(([key, count]) => {
+          const [className, studentNumber] = key.split("\u0000");
+          return [`${className} · ${studentNumber} 號`, count];
+        });
+        function fillRanking(list, ranking, unit) {
+          list.replaceChildren(...[0, 1, 2].map((index) => {
+          const item = document.createElement("li");
+          item.className = "ranking-item";
+          const result = ranking[index];
+          item.innerHTML = `<span class="rank-number">${index + 1}</span><span class="rank-class"></span><span class="rank-count"></span>`;
+          item.querySelector(".rank-class").textContent = result ? result[0] : "—";
+          item.querySelector(".rank-count").textContent = result ? `${result[1]} ${unit}` : "—";
+          return item;
+          }));
+        }
+        todayCount.textContent = String(monthRows.length);
+        fillRanking(rankingList, classRanking, "人");
+        fillRanking(studentRankingList, studentRanking, "次");
+        statsNote.textContent = `已同步 · ${new Intl.DateTimeFormat("zh-Hant", { hour:"2-digit", minute:"2-digit", hour12:false }).format(now)}`;
+      }
+
+      async function loadStats() {
+        if (statsRequestInFlight) return;
+        statsRequestInFlight = true;
+        const callbackName = `__libraryStats_${Date.now()}`;
+        const script = document.createElement("script");
+        const timeoutId = window.setTimeout(fail, 12000);
+        function cleanup() {
+          window.clearTimeout(timeoutId);
+          script.remove();
+          delete window[callbackName];
+          statsRequestInFlight = false;
+        }
+        function fail() {
+          cleanup();
+          statsNote.textContent = "統計暫時無法更新，稍後自動重試";
+        }
+        window[callbackName] = (response) => {
+          try {
+            if (!response?.table?.rows) throw new Error("invalid-stats");
+            const header = response.table.cols.map((column) => column.label || column.id || "");
+            const rows = response.table.rows.map((row) => row.c.map((cell) => cell?.f ?? cell?.v ?? ""));
+            renderStats([header, ...rows]);
+            cleanup();
+          } catch (error) { fail(); }
+        };
+        script.onerror = fail;
+        const tqx = `out:json;responseHandler:${callbackName}`;
+        script.src = `${SHEET_QUERY_URL}?headers=1&tqx=${encodeURIComponent(tqx)}&_=${Date.now()}`;
+        document.head.appendChild(script);
+      }
+
+      function clearConfirmationTimer() {
+        if (confirmationTimer !== null) window.clearInterval(confirmationTimer);
+        confirmationTimer = null;
+      }
+
+      function clearTimers() {
+        clearConfirmationTimer();
+        if (resetTimer !== null) window.clearTimeout(resetTimer);
+        resetTimer = null;
+      }
+
+      function formatTime(date) {
+        return new Intl.DateTimeFormat("zh-Hant", {
+          year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", second: "2-digit",
+          hour12: false
+        }).format(date);
+      }
+
+      function escapeHtml(value) {
+        const span = document.createElement("span");
+        span.textContent = value;
+        return span.innerHTML;
+      }
+
+      async function toggleFullscreen() {
+        try {
+          if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.();
+          else await document.exitFullscreen?.();
+        } catch (error) {
+          setStatus("error", "無法進入全螢幕，仍可繼續登記");
+        }
+      }
+
+      function updateFullscreenLabel() {
+        fullscreenButton.textContent = document.fullscreenElement ? "退出全螢幕" : "進入全螢幕";
+      }
+
+      function trapDialogFocus(event) {
+        if (event.key !== "Tab" || dialogLayer.hidden) return;
+        const focusable = [...dialogLayer.querySelectorAll("button:not([hidden]):not([disabled])")];
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+
+      closeDialogButton.addEventListener("click", closeDialog);
+      dialogLayer.addEventListener("click", (event) => { if (event.target === dialogLayer) closeDialog(); });
+      fullscreenButton.addEventListener("click", toggleFullscreen);
+      document.addEventListener("fullscreenchange", updateFullscreenLabel);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !dialogLayer.hidden) closeDialog();
+        trapDialogFocus(event);
+      });
+      window.addEventListener("online", updateNetworkStatus);
+      window.addEventListener("offline", updateNetworkStatus);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) loadStats(); });
+      document.getElementById("zoomOut").addEventListener("click", () => { interfaceZoom -= 10; applyInterfaceZoom(); });
+      document.getElementById("zoomIn").addEventListener("click", () => { interfaceZoom += 10; applyInterfaceZoom(); });
+
+      renderClasses();
+      updateNetworkStatus();
+      applyInterfaceZoom();
+      loadStats();
+      window.setInterval(loadStats, 500);
+    })();
   </script>
 </body>
 </html>

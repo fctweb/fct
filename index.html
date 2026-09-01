@@ -377,8 +377,6 @@
     .success-mark { width:42px;height:42px;fill:none;stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-linejoin:round; }
     .success-mark circle { stroke-dasharray:126;stroke-dashoffset:126;animation:drawCircle 340ms cubic-bezier(.16,1,.3,1) forwards; }
     .success-mark path { stroke-dasharray:36;stroke-dashoffset:36;animation:drawCheck 260ms 210ms cubic-bezier(.16,1,.3,1) forwards; }
-    .submit-spinner { width:38px;height:38px;border:4px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:submitSpin 700ms linear infinite; }
-    @keyframes submitSpin { to { transform:rotate(360deg); } }
     .inline-state.is-success .inline-state-icon { animation:successSettle 420ms cubic-bezier(.16,1,.3,1) both; }
     @keyframes drawCircle { to { stroke-dashoffset:0; } }
     @keyframes drawCheck { to { stroke-dashoffset:0; } }
@@ -407,6 +405,9 @@
     .auth-submit { width:100%;height:54px;margin-top:14px;border:0;border-radius:12px;background:#2160f3;color:#fff;font-family:inherit;font-size:17px;font-weight:700;cursor:pointer; }
     .auth-submit:disabled { opacity:.62;cursor:wait; }
     .auth-error { min-height:22px;margin:12px 0 0;color:#b42318;font-size:14px; }
+    .backend-toast { position:fixed;top:16px;left:50%;z-index:140;min-width:300px;max-width:min(560px,calc(100vw - 32px));padding:15px 20px;border-radius:14px;background:#123b72;color:#fff;box-shadow:0 14px 36px rgba(18,38,70,.24);font-size:16px;font-weight:700;text-align:center;opacity:0;transform:translate(-50%,-140%);pointer-events:none;transition:transform 320ms cubic-bezier(.16,1,.3,1),opacity 180ms ease; }
+    .backend-toast.is-visible { opacity:1;transform:translate(-50%,0); }
+    .backend-toast.is-error { background:#a52a2a; }
     .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
     @media (max-width:1050px) { .app{padding:28px}.topbar{min-height:112px}main{grid-template-columns:1fr}.guide-panel{padding:28px}.benefits{display:none}.instructions{margin-top:22px} }
     @media (max-width:680px) { .app{padding:18px 12px}.brand-icon{width:62px;height:58px}.title{font-size:29px}.brand-subtitle{font-size:16px}.topbar{gap:12px;min-height:92px}main{padding-top:14px}.selection-panel{padding:15px 12px;border-radius:22px}.class-grid{min-height:0}.class-grid,.transition-old-layer{gap:10px}.grade-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.class-button{min-height:64px;border-radius:12px;font-size:18px}.guide-panel{border-radius:22px}.number-grid,.inline-number-view .number-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.inline-number-view .number-button{min-height:58px}.inline-number-view,.inline-state{min-height:0}.zoom-controls{right:10px;bottom:10px} }
@@ -435,6 +436,7 @@
   </style>
 </head>
 <body>
+  <div class="backend-toast" id="backendToast" role="status" aria-live="polite"></div>
   <div class="auth-layer" id="authLayer">
     <form class="auth-card" id="authForm">
       <svg class="auth-icon" viewBox="0 0 100 88" aria-hidden="true"><path fill="#3974ef" d="M5 10Q25 3 46 15v61Q26 65 5 74zM95 10Q75 3 54 15v61q20-11 41-2z"/><path d="M10 68q22-8 40 5 18-13 40-5" fill="none" stroke="#ddecff" stroke-width="4" stroke-linecap="round"/></svg>
@@ -497,7 +499,7 @@
       "use strict";
 
       const API_URL = "https://script.google.com/macros/s/AKfycbzA4Aj81KG1gjEstNhAHchiC6BJVIVaA-53ZIibFvr1Cjv58giD9Mt8wEPyHJaqhSM/exec";
-      const SECURITY_VERSION = "apps-script-device-auth-v2";
+      const SECURITY_VERSION = "apps-script-device-auth-v3";
       const SECURITY_VERSION_KEY = "library-security-version";
       const DEVICE_TOKEN_KEY = "library-secure-device-token-v1";
       const PORTRAIT_LAYOUT_WIDTH = 1280;
@@ -547,6 +549,7 @@
       const authPassword = document.getElementById("authPassword");
       const authSubmit = document.getElementById("authSubmit");
       const authError = document.getElementById("authError");
+      const backendToast = document.getElementById("backendToast");
 
       let selectedClass = "";
       let selectedNumber = null;
@@ -559,6 +562,7 @@
       let statsRequestInFlight = false;
       let zoomHoldTimer = null;
       let appStarted = false;
+      let backendToastTimer = null;
 
       function createClassView() {
         const view = document.createElement("div");
@@ -682,43 +686,34 @@
         clearConfirmationTimer();
         isSubmitting = true;
         const record = { className: selectedClass, number: selectedNumber, createdAt: Date.now(), requestId: crypto.randomUUID() };
-        showSubmitting(record);
+        showSuccess(record);
+        isSubmitting = false;
         postRecord(record)
           .then(() => {
-            showSuccess(record);
             window.setTimeout(loadStats, 3500);
             window.setTimeout(loadStats, 10000);
           })
           .catch((error) => {
             if (error.message === "device-not-authorized") {
-              appStarted = false;
               authLayer.hidden = false;
               authError.textContent = "此設備的授權已失效，請由老師重新授權";
+              showBackendToast("设备授权已失效，请重新授权", true);
               authPassword.focus();
               return;
             }
-            showError(navigator.onLine ? "伺服器未確認登記，請重新提交" : "目前沒有網路，請連線後重新提交");
-          })
-          .finally(() => { isSubmitting = false; });
+            showBackendToast(navigator.onLine ? "后台提交失败，请老师检查记录" : "网络已断开，本次记录未送出", true);
+          });
       }
 
       async function postRecord(record) {
         if (!navigator.onLine) throw new Error("offline");
-        const response = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type":"text/plain;charset=UTF-8" },
-          body: JSON.stringify({
-            action: "submit",
-            deviceToken: getOrCreateDeviceToken(),
-            className: record.className,
-            studentNumber: record.number,
-            requestId: record.requestId || String(record.createdAt)
-          }),
-          redirect: "follow",
-          cache: "no-store"
+        const result = await callApi({
+          action: "submit",
+          deviceToken: getOrCreateDeviceToken(),
+          className: record.className,
+          studentNumber: record.number,
+          requestId: record.requestId || String(record.createdAt)
         });
-        if (!response.ok) throw new Error("server-unavailable");
-        const result = await response.json();
         if (!result.ok) throw new Error(result.error || "submission-rejected");
         return result;
       }
@@ -729,9 +724,15 @@
         resetTimer = window.setTimeout(resetToClasses, 800);
       }
 
-      function showSubmitting(record) {
-        classGrid.innerHTML = `<div class="inline-state" role="status" aria-live="polite"><div><div class="inline-state-icon"><span class="submit-spinner" aria-hidden="true"></span></div><h2>正在提交</h2><p>${escapeHtml(record.className)} · ${record.number} 號</p></div></div>`;
-        setStatus("online", "正在等待伺服器確認登記");
+      function showBackendToast(message, isError) {
+        if (backendToastTimer !== null) window.clearTimeout(backendToastTimer);
+        backendToast.textContent = message;
+        backendToast.classList.toggle("is-error", isError);
+        backendToast.classList.add("is-visible");
+        backendToastTimer = window.setTimeout(() => {
+          backendToast.classList.remove("is-visible");
+          backendToastTimer = null;
+        }, isError ? 6000 : 2600);
       }
 
       function showError(message = "登記未送出，已保留目前選擇。") {
@@ -893,26 +894,34 @@
         if (localStorage.getItem(SECURITY_VERSION_KEY) === SECURITY_VERSION) return;
         localStorage.removeItem("library-device-authorized-v1");
         localStorage.removeItem("library-entry-submit-queue-v1");
+        localStorage.removeItem(DEVICE_TOKEN_KEY);
         document.cookie = "library_device_authorized=; Max-Age=0; Path=/; SameSite=Lax";
         localStorage.setItem(SECURITY_VERSION_KEY, SECURITY_VERSION);
       }
 
       async function callApi(payload) {
-        const response = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type":"text/plain;charset=UTF-8" },
-          body: JSON.stringify(payload),
-          redirect: "follow",
-          cache: "no-store"
-        });
-        if (!response.ok) throw new Error("server-unavailable");
-        return response.json();
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+        try {
+          const response = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type":"text/plain;charset=UTF-8" },
+            body: JSON.stringify(payload),
+            redirect: "follow",
+            cache: "no-store",
+            signal: controller.signal
+          });
+          if (!response.ok) throw new Error("server-unavailable");
+          return response.json();
+        } finally {
+          window.clearTimeout(timeoutId);
+        }
       }
 
       async function checkDeviceAuthorization() {
         authLayer.hidden = false;
-        authError.textContent = "正在检查设备授权…";
-        authSubmit.disabled = true;
+        authError.textContent = "正在自动检查；也可以直接输入密码授权";
+        authSubmit.disabled = false;
         try {
           const result = await callApi({ action:"status",deviceToken:getOrCreateDeviceToken() });
           if (result.ok && result.authorized) {
@@ -920,19 +929,19 @@
             startAuthorizedApp();
             return;
           }
+          if (appStarted) return;
+          authLayer.hidden = false;
           authError.textContent = "";
           authPassword.focus();
         } catch (error) {
-          authError.textContent = "无法连接授权服务器，请检查网络后刷新页面";
-        } finally {
-          authSubmit.disabled = false;
+          if (!appStarted) authError.textContent = "自动检查较慢，可以直接输入密码授权";
         }
       }
 
       function startAuthorizedApp() {
+        authLayer.hidden = true;
         if (appStarted) return;
         appStarted = true;
-        authLayer.hidden = true;
         renderClasses();
         updateNetworkStatus();
         applyInterfaceZoom();
@@ -947,14 +956,20 @@
         authSubmit.disabled = true;
         authSubmit.textContent = "正在驗證…";
         try {
+          const deviceToken = getOrCreateDeviceToken();
+          const challenge = await callApi({ action:"challenge",deviceToken:deviceToken });
+          if (!challenge.ok) throw new Error(challenge.error || "challenge-failed");
+          const passwordVerifier = await sha256HexClient(`${challenge.salt}|${authPassword.value}`);
+          const proof = await hmacSha256HexClient(`${challenge.nonce}|${deviceToken}`, passwordVerifier);
+          authPassword.value = "";
           const result = await callApi({
             action: "enroll",
-            password: authPassword.value,
-            deviceToken: getOrCreateDeviceToken(),
+            proof: proof,
+            deviceToken: deviceToken,
             deviceLabel: `${navigator.platform || "学校平板"} · ${new Date().toLocaleDateString("zh-Hant")}`
           });
           if (!result.ok) {
-            authError.textContent = result.error === "wrong-password"
+            authError.textContent = result.error === "invalid-proof"
               ? "授权密码不正确，请重新输入"
               : result.error === "too-many-attempts"
                 ? "密码错误次数过多，请十分钟后重试"
@@ -962,7 +977,6 @@
             authPassword.select();
             return;
           }
-          authPassword.value = "";
           startAuthorizedApp();
         } catch (error) {
           authError.textContent = "无法连接授权服务器，请检查网络后重试";
@@ -970,6 +984,18 @@
           authSubmit.disabled = false;
           authSubmit.textContent = "授權此設備";
         }
+      }
+
+      async function sha256HexClient(value) {
+        const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
+        return [...digest].map(byte => byte.toString(16).padStart(2, "0")).join("");
+      }
+
+      async function hmacSha256HexClient(value, keyHex) {
+        const keyBytes = new Uint8Array(keyHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
+        const key = await crypto.subtle.importKey("raw", keyBytes, { name:"HMAC",hash:"SHA-256" }, false, ["sign"]);
+        const signature = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value)));
+        return [...signature].map(byte => byte.toString(16).padStart(2, "0")).join("");
       }
 
       async function toggleFullscreen() {

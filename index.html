@@ -992,7 +992,7 @@
       }
 
       async function hmacSha256HexClient(value, keyHex) {
-        const keyBytes = new Uint8Array(keyHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
+        const keyBytes = new TextEncoder().encode(keyHex);
         const key = await crypto.subtle.importKey("raw", keyBytes, { name:"HMAC",hash:"SHA-256" }, false, ["sign"]);
         const signature = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value)));
         return [...signature].map(byte => byte.toString(16).padStart(2, "0")).join("");

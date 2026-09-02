@@ -433,6 +433,25 @@
       .zoom-controls { right:14px;bottom:12px; }
     }
     @media (prefers-reduced-motion:reduce) { .success-mark circle,.success-mark path,.inline-state.is-success .inline-state-icon{animation-duration:1ms;animation-delay:0ms}.zoom-controls{transition-duration:1ms}.step-line::after{transition-duration:1ms} }
+    @media (hover:none) {
+      .class-button:hover { transform:none;filter:none; }
+      .inline-number-view .number-button:hover { background:var(--class-soft,#edf3fc);color:var(--class-color,#1647aa); }
+      .zoom-controls > button:not(.zoom-hold):hover { background:#edf4ff; }
+    }
+    .app.view-input main { grid-template-columns:1fr; }
+    .app.view-input .guide-panel { display:none; }
+    .app.view-input .selection-panel { width:min(1120px,100%);margin-inline:auto; }
+    .app.view-stats main { display:block;width:min(760px,100%);margin-inline:auto; }
+    .app.view-stats .selection-panel,.app.view-stats .steps { display:none; }
+    .app.view-stats .guide-panel { min-height:675px;padding:48px 44px; }
+    .app.view-stats .stats-panel { margin-top:0;padding-top:0;border-top:0; }
+    .app.view-stats .today-count { font-size:72px; }
+    .app.view-stats .today-label { font-size:20px; }
+    .app.view-stats .ranking-title { font-size:24px; }
+    .app.view-stats .ranking-item { min-height:68px;grid-template-columns:46px 1fr auto; }
+    .app.view-stats .rank-number { width:36px;height:36px;font-size:17px; }
+    .app.view-stats .rank-class { font-size:21px; }
+    .app.view-stats .rank-count { font-size:18px; }
   </style>
 </head>
 <body>
@@ -499,6 +518,12 @@
       "use strict";
 
       const API_URL = "https://script.google.com/macros/s/AKfycbzA4Aj81KG1gjEstNhAHchiC6BJVIVaA-53ZIibFvr1Cjv58giD9Mt8wEPyHJaqhSM/exec";
+      const requestedView = (new URLSearchParams(location.search).get("view") || "").toLowerCase();
+      const VIEW_MODE = ["stat", "stats", "statt", "statistics", "right"].includes(requestedView)
+        ? "stats"
+        : ["input", "entry", "left"].includes(requestedView)
+          ? "input"
+          : "combined";
       const SECURITY_VERSION = "apps-script-device-auth-v3";
       const SECURITY_VERSION_KEY = "library-security-version";
       const DEVICE_TOKEN_KEY = "library-secure-device-token-v1";
@@ -550,6 +575,12 @@
       const authSubmit = document.getElementById("authSubmit");
       const authError = document.getElementById("authError");
       const backendToast = document.getElementById("backendToast");
+      const appElement = document.querySelector(".app");
+      const brandSubtitle = document.querySelector(".brand-subtitle");
+
+      if (VIEW_MODE === "input" || VIEW_MODE === "stats") appElement.classList.add(`view-${VIEW_MODE}`);
+      if (VIEW_MODE === "input") brandSubtitle.textContent = "請選擇班級與學號";
+      if (VIEW_MODE === "stats") brandSubtitle.textContent = "本月進館統計";
 
       let selectedClass = "";
       let selectedNumber = null;
@@ -560,6 +591,8 @@
       let resetTimer = null;
       let interfaceZoom = Number(localStorage.getItem("library-interface-zoom") || 100);
       let statsRequestInFlight = false;
+      let latestStatsSummary = null;
+      let optimisticStatsUntil = 0;
       let zoomHoldTimer = null;
       let appStarted = false;
       let backendToastTimer = null;
@@ -685,13 +718,16 @@
         if (isSubmitting || !selectedClass || selectedNumber === null) return;
         clearConfirmationTimer();
         isSubmitting = true;
-        const record = { className: selectedClass, number: selectedNumber, createdAt: Date.now(), requestId: crypto.randomUUID() };
+        const record = { className: selectedClass, number: selectedNumber, createdAt: Date.now(), requestId: createRequestId() };
         showSuccess(record);
+        if (VIEW_MODE !== "input") applyOptimisticStats(record);
         isSubmitting = false;
         postRecord(record)
           .then(() => {
-            window.setTimeout(loadStats, 3500);
-            window.setTimeout(loadStats, 10000);
+            if (VIEW_MODE !== "input") {
+              window.setTimeout(loadStats, 6500);
+              window.setTimeout(loadStats, 10000);
+            }
           })
           .catch((error) => {
             if (error.message === "device-not-authorized") {
@@ -825,6 +861,7 @@
       }
 
       function renderStats(summary) {
+        latestStatsSummary = summary;
         function fillRanking(list, ranking, unit) {
           list.replaceChildren(...[0, 1, 2].map((index) => {
           const item = document.createElement("li");
@@ -842,8 +879,32 @@
         statsNote.textContent = `已同步 · ${new Intl.DateTimeFormat("zh-Hant", { hour:"2-digit", minute:"2-digit", hour12:false }).format(new Date())}`;
       }
 
+      function applyOptimisticStats(record) {
+        const summary = latestStatsSummary
+          ? JSON.parse(JSON.stringify(latestStatsSummary))
+          : { total:Number(todayCount.textContent) || 0,classCounts:{},studentCounts:{} };
+        summary.classCounts = summary.classCounts || {};
+        summary.studentCounts = summary.studentCounts || {};
+        summary.total = Number(summary.total || 0) + 1;
+        summary.classCounts[record.className] = Number(summary.classCounts[record.className] || 0) + 1;
+        const studentKey = `${record.className}\u0000${record.number}`;
+        summary.studentCounts[studentKey] = Number(summary.studentCounts[studentKey] || 0) + 1;
+        const rank = (counts, formatLabel) => Object.entries(counts)
+          .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "zh-Hant"))
+          .slice(0, 3)
+          .map(([key, count]) => ({ label:formatLabel(key),count }));
+        summary.classRanking = rank(summary.classCounts, key => key);
+        summary.studentRanking = rank(summary.studentCounts, key => {
+          const [className, studentNumber] = key.split("\u0000");
+          return `${className} · ${studentNumber} 號`;
+        });
+        optimisticStatsUntil = Date.now() + 6000;
+        renderStats(summary);
+        statsNote.textContent = "本機已更新 · 等待服務端校準";
+      }
+
       async function loadStats() {
-        if (document.hidden || statsRequestInFlight) return;
+        if (document.hidden || statsRequestInFlight || Date.now() < optimisticStatsUntil) return;
         statsRequestInFlight = true;
         try {
           const result = await callApi({ action:"stats",deviceToken:getOrCreateDeviceToken() });
@@ -879,6 +940,15 @@
         const span = document.createElement("span");
         span.textContent = value;
         return span.innerHTML;
+      }
+
+      function createRequestId() {
+        if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        bytes[6] = (bytes[6] & 15) | 64;
+        bytes[8] = (bytes[8] & 63) | 128;
+        const hex = Array.from(bytes, byte => (byte < 16 ? "0" : "") + byte.toString(16));
+        return `${hex.slice(0,4).join("")}-${hex.slice(4,6).join("")}-${hex.slice(6,8).join("")}-${hex.slice(8,10).join("")}-${hex.slice(10).join("")}`;
       }
 
       function getOrCreateDeviceToken() {
@@ -942,12 +1012,14 @@
         authLayer.hidden = true;
         if (appStarted) return;
         appStarted = true;
-        renderClasses();
+        if (VIEW_MODE !== "stats") renderClasses();
         updateNetworkStatus();
         applyInterfaceZoom();
         setZoomControlsHidden(localStorage.getItem("library-zoom-controls-hidden") === "1");
-        loadStats();
-        window.setInterval(loadStats, 1000);
+        if (VIEW_MODE !== "input") {
+          loadStats();
+          window.setInterval(loadStats, 1000);
+        }
       }
 
       async function submitAuthorization(event) {
